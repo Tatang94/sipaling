@@ -114,6 +114,14 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - June 29, 2025: Added PostgreSQL database integration with Drizzle ORM
 - June 29, 2025: Migrated from MemStorage to DatabaseStorage implementation
 - June 29, 2025: Successfully seeded database with sample kos data
+- June 30, 2025: Added complete authentication system with login/register pages
+- June 30, 2025: Implemented splash screen with "SI PALING KOST" branding
+- June 30, 2025: Created onboarding flow with role selection (Pencari Kos/Pemilik Kos)
+- June 30, 2025: Added comprehensive help/bantuan page with FAQ and contact info
+- June 30, 2025: Fixed API routing conflicts between search and ID endpoints
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
+Brand name: "SI PALING KOST" (not "Mamikos")
+Design theme: Green and white color scheme
+Language: 100% Indonesian interface

@@ -25,25 +25,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get kos by ID
-  app.get("/api/kos/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid kos ID" });
-      }
-      
-      const kos = await storage.getKos(id);
-      if (!kos) {
-        return res.status(404).json({ message: "Kos not found" });
-      }
-      
-      res.json(kos);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch kos" });
-    }
-  });
-
   // Search kos
   app.get("/api/kos/search", async (req, res) => {
     try {
@@ -101,6 +82,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(kos);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch kos by city" });
+    }
+  });
+
+  // Get kos by ID (placed after search to avoid route conflicts)
+  app.get("/api/kos/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid kos ID" });
+      }
+      
+      const kos = await storage.getKos(id);
+      if (!kos) {
+        return res.status(404).json({ message: "Kos not found" });
+      }
+      
+      res.json(kos);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch kos" });
     }
   });
 
