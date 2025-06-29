@@ -1,0 +1,115 @@
+# Replit.md
+
+## Overview
+This is a modern full-stack web application for a kos (boarding house) rental platform called "KosKu". The application allows users to search, browse, and book kos accommodations across Indonesia. It features a React-based frontend with a Node.js/Express backend, using PostgreSQL for data storage and shadcn/ui for the component library.
+
+## System Architecture
+
+### Frontend Architecture
+- **Framework**: React 18 with TypeScript
+- **Build Tool**: Vite for fast development and optimized builds
+- **Routing**: Wouter for lightweight client-side routing
+- **State Management**: TanStack Query (React Query) for server state management
+- **Styling**: Tailwind CSS with shadcn/ui component library
+- **Form Handling**: React Hook Form with Zod validation
+
+### Backend Architecture
+- **Runtime**: Node.js with Express.js framework
+- **Language**: TypeScript with ES modules
+- **API Style**: RESTful API endpoints
+- **Database ORM**: Drizzle ORM for type-safe database operations
+- **Validation**: Zod schemas for request/response validation
+
+### Database Architecture
+- **Database**: PostgreSQL (configured for Neon serverless)
+- **Schema Management**: Drizzle Kit for migrations
+- **Tables**: 
+  - `kos` - Main accommodation listings
+  - `bookings` - User booking records
+
+## Key Components
+
+### Data Layer
+- **Drizzle ORM**: Type-safe database queries and schema definitions
+- **Schema**: Centralized in `shared/schema.ts` with Zod validation schemas
+- **Storage Interface**: Abstract storage interface in `server/storage.ts` with in-memory implementation for development
+
+### Frontend Features
+- **Home Page**: Hero section, featured listings, popular cities, promotional content
+- **Search Page**: Advanced filtering by location, price, type, and amenities
+- **Responsive Design**: Mobile-first approach with Tailwind CSS
+- **Component Library**: shadcn/ui components for consistent UI
+- **Toast Notifications**: User feedback for actions
+
+### Backend Features
+- **REST API**: CRUD operations for kos listings and bookings
+- **Search Functionality**: Query-based search with filters
+- **Error Handling**: Centralized error handling middleware
+- **Development Logging**: Request/response logging for API endpoints
+
+## Data Flow
+
+### Client-Server Communication
+1. Frontend makes HTTP requests to `/api/*` endpoints
+2. Express server processes requests through route handlers
+3. Storage layer (currently in-memory) handles data operations
+4. Responses are formatted and sent back to the client
+5. TanStack Query manages caching and state synchronization
+
+### Search Flow
+1. User inputs search criteria on frontend
+2. Query parameters are constructed and sent to `/api/kos/search`
+3. Backend filters data based on criteria (location, price, type)
+4. Results are returned and displayed with filtering options
+
+### Booking Flow
+1. User selects a kos and clicks book
+2. Toast notification shows owner contact information
+3. Future implementation will handle booking creation via `/api/bookings`
+
+## External Dependencies
+
+### Frontend Dependencies
+- **@tanstack/react-query**: Server state management
+- **wouter**: Lightweight routing
+- **@radix-ui**: Accessible UI primitives (via shadcn/ui)
+- **lucide-react**: Icon library
+- **tailwindcss**: Utility-first CSS framework
+- **class-variance-authority**: Component variant management
+
+### Backend Dependencies
+- **express**: Web application framework
+- **drizzle-orm**: Type-safe ORM
+- **@neondatabase/serverless**: PostgreSQL driver for Neon
+- **zod**: Schema validation
+- **tsx**: TypeScript execution for development
+
+### Development Dependencies
+- **vite**: Build tool and dev server
+- **typescript**: Type checking
+- **tailwindcss**: CSS framework
+- **drizzle-kit**: Database migration tool
+
+## Deployment Strategy
+
+### Development Setup
+- **Dev Server**: Vite dev server proxies API requests to Express
+- **Hot Reload**: Both frontend and backend support hot reloading
+- **Database**: Uses environment variable `DATABASE_URL` for connection
+
+### Production Build
+- **Frontend**: Vite builds static assets to `dist/public`
+- **Backend**: esbuild bundles server code to `dist/index.js`
+- **Static Serving**: Express serves built frontend assets in production
+- **Database**: PostgreSQL connection via environment variables
+
+### Environment Configuration
+- Development: `NODE_ENV=development` with local database
+- Production: `NODE_ENV=production` with external database
+- Database URL required via `DATABASE_URL` environment variable
+
+## Changelog
+- June 29, 2025. Initial setup
+
+## User Preferences
+Preferred communication style: Simple, everyday language.
