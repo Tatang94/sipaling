@@ -9,6 +9,7 @@ import OnboardingPage from "@/pages/onboarding";
 import Home from "@/pages/home";
 import Search from "@/pages/search";
 import LoginPage from "@/pages/login";
+import DashboardPage from "@/pages/dashboard";
 import BantuanPage from "@/pages/bantuan";
 import NotFound from "@/pages/not-found";
 
@@ -50,6 +51,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/search" component={Search} />
       <Route path="/login" component={LoginPage} />
+      <Route path="/dashboard" component={DashboardPage} />
       <Route path="/onboarding" component={OnboardingPage} />
       <Route path="/bantuan" component={BantuanPage} />
       <Route component={NotFound} />

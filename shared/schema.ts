@@ -3,6 +3,17 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Users table
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  password: text("password").notNull(),
+  role: text("role").notNull().default("pencari"), // "pencari" or "pemilik"
+  phone: text("phone"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const kos = pgTable("kos", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -25,6 +36,7 @@ export const kos = pgTable("kos", {
   isPromoted: boolean("is_promoted").notNull().default(false),
   roomSize: text("room_size"),
   paymentType: text("payment_type").notNull().default("monthly"),
+  ownerId: integer("owner_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -35,10 +47,19 @@ export const bookings = pgTable("bookings", {
   customerName: text("customer_name").notNull(),
   customerPhone: text("customer_phone").notNull(),
   customerEmail: text("customer_email").notNull(),
+  userId: integer("user_id").references(() => users.id),
   checkInDate: timestamp("check_in_date").notNull(),
   status: text("status").notNull().default("pending"), // "pending", "confirmed", "cancelled"
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  role: z.enum(["pencari", "pemilik"]).default("pencari"),
+  phone: z.string().optional(),
 });
 
 export const insertKosSchema = createInsertSchema(kos).omit({
@@ -53,6 +74,7 @@ export const insertKosSchema = createInsertSchema(kos).omit({
   paymentType: z.string().default("monthly"),
   isAvailable: z.boolean().default(true),
   isPromoted: z.boolean().default(false),
+  ownerId: z.number().optional(),
 });
 
 export const insertBookingSchema = createInsertSchema(bookings).omit({
@@ -61,11 +83,22 @@ export const insertBookingSchema = createInsertSchema(bookings).omit({
 }).extend({
   status: z.string().default("pending"),
   notes: z.string().nullable().optional(),
+  userId: z.number().optional(),
 });
 
 // Relations
-export const kosRelations = relations(kos, ({ many }) => ({
+export const usersRelations = relations(users, ({ many }) => ({
+  ownedKos: many(kos, { relationName: "ownerKos" }),
   bookings: many(bookings),
+}));
+
+export const kosRelations = relations(kos, ({ many, one }) => ({
+  bookings: many(bookings),
+  owner: one(users, {
+    fields: [kos.ownerId],
+    references: [users.id],
+    relationName: "ownerKos",
+  }),
 }));
 
 export const bookingsRelations = relations(bookings, ({ one }) => ({
@@ -73,8 +106,14 @@ export const bookingsRelations = relations(bookings, ({ one }) => ({
     fields: [bookings.kosId],
     references: [kos.id],
   }),
+  user: one(users, {
+    fields: [bookings.userId],
+    references: [users.id],
+  }),
 }));
 
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
 export type InsertKos = z.infer<typeof insertKosSchema>;
 export type Kos = typeof kos.$inferSelect;
 export type InsertBooking = z.infer<typeof insertBookingSchema>;

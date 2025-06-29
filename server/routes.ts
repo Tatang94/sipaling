@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertBookingSchema } from "@shared/schema";
+import { insertUserSchema, insertBookingSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -126,6 +126,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid booking data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create booking" });
+    }
+  });
+
+  // Auth routes
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const validatedData = insertUserSchema.parse(req.body);
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(validatedData.email);
+      if (existingUser) {
+        return res.status(400).json({ message: "Email sudah terdaftar" });
+      }
+      
+      const user = await storage.createUser(validatedData);
+      const { password, ...userWithoutPassword } = user;
+      res.status(201).json({ user: userWithoutPassword });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Data tidak valid", errors: error.errors });
+      }
+      res.status(500).json({ message: "Gagal membuat akun" });
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email dan password diperlukan" });
+      }
+      
+      const user = await storage.verifyPassword(email, password);
+      if (!user) {
+        return res.status(401).json({ message: "Email atau password salah" });
+      }
+      
+      const { password: _, ...userWithoutPassword } = user;
+      res.json({ user: userWithoutPassword });
+    } catch (error) {
+      res.status(500).json({ message: "Gagal login" });
+    }
+  });
+
+  // Dashboard routes - Get user's kos (for pemilik)
+  app.get("/api/dashboard/kos/:ownerId", async (req, res) => {
+    try {
+      const ownerId = parseInt(req.params.ownerId);
+      if (isNaN(ownerId)) {
+        return res.status(400).json({ message: "Invalid owner ID" });
+      }
+      
+      const kos = await storage.getKosByOwner(ownerId);
+      res.json(kos);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch owner's kos" });
+    }
+  });
+
+  // Dashboard routes - Get owner's bookings
+  app.get("/api/dashboard/bookings/:ownerId", async (req, res) => {
+    try {
+      const ownerId = parseInt(req.params.ownerId);
+      if (isNaN(ownerId)) {
+        return res.status(400).json({ message: "Invalid owner ID" });
+      }
+      
+      const bookings = await storage.getBookingsByOwner(ownerId);
+      res.json(bookings);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch owner's bookings" });
+    }
+  });
+
+  // Dashboard routes - Get user's bookings (for pencari)
+  app.get("/api/dashboard/my-bookings/:userId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+      
+      const bookings = await storage.getBookingsByUser(userId);
+      res.json(bookings);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch user's bookings" });
+    }
+  });
+
+  // Update booking status
+  app.patch("/api/bookings/:id/status", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { status } = req.body;
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid booking ID" });
+      }
+      
+      if (!status || !["pending", "confirmed", "cancelled"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+      
+      const booking = await storage.updateBookingStatus(id, status);
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+      
+      res.json(booking);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update booking status" });
     }
   });
 

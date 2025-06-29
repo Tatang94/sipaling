@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Eye, EyeOff, Home, Mail, Lock, User, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function LoginPage() {
   const [, setLocation] = useLocation();
@@ -22,26 +25,85 @@ export default function LoginPage() {
 
   // Register form state
   const [registerData, setRegisterData] = useState({
-    fullName: "",
+    name: "",
     email: "",
     phone: "",
     password: "",
     confirmPassword: "",
+    role: "pencari" as "pencari" | "pemilik",
+  });
+
+  const loginMutation = useMutation({
+    mutationFn: async (credentials: { email: string; password: string }) => {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Login gagal");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Login Berhasil!",
+        description: `Selamat datang kembali, ${data.user.name}`,
+      });
+      localStorage.setItem("user", JSON.stringify(data.user));
+      setLocation(data.user.role === "pemilik" ? "/dashboard" : "/");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Login Gagal",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const registerMutation = useMutation({
+    mutationFn: async (userData: typeof registerData) => {
+      const { confirmPassword, ...dataToSend } = userData;
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dataToSend),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Registrasi gagal");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Registrasi Berhasil!",
+        description: `Akun ${data.user.name} telah dibuat. Silakan login.`,
+      });
+      // Reset form and switch to login tab
+      setRegisterData({
+        name: "",
+        email: "",
+        phone: "",
+        password: "",
+        confirmPassword: "",
+        role: "pencari",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Registrasi Gagal",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    // Simulate login process
-    setTimeout(() => {
-      setIsLoading(false);
-      toast({
-        title: "Login Berhasil!",
-        description: "Selamat datang kembali di SI PALING KOST",
-      });
-      setLocation("/");
-    }, 2000);
+    loginMutation.mutate(loginData);
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -56,16 +118,7 @@ export default function LoginPage() {
       return;
     }
 
-    setIsLoading(true);
-
-    // Simulate registration process
-    setTimeout(() => {
-      setIsLoading(false);
-      toast({
-        title: "Pendaftaran Berhasil!",
-        description: "Akun Anda telah dibuat. Silakan login untuk melanjutkan.",
-      });
-    }, 2000);
+    registerMutation.mutate(registerData);
   };
 
   return (
@@ -171,8 +224,8 @@ export default function LoginPage() {
                         type="text"
                         placeholder="Nama lengkap Anda"
                         className="pl-10"
-                        value={registerData.fullName}
-                        onChange={(e) => setRegisterData(prev => ({ ...prev, fullName: e.target.value }))}
+                        value={registerData.name}
+                        onChange={(e) => setRegisterData(prev => ({ ...prev, name: e.target.value }))}
                         required
                       />
                     </div>
@@ -231,6 +284,24 @@ export default function LoginPage() {
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="register-role">Daftar Sebagai</Label>
+                    <Select
+                      value={registerData.role}
+                      onValueChange={(value: "pencari" | "pemilik") => 
+                        setRegisterData(prev => ({ ...prev, role: value }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih peran Anda" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pencari">Pencari Kos</SelectItem>
+                        <SelectItem value="pemilik">Pemilik Kos</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-2">

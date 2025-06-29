@@ -1,23 +1,68 @@
-import { kos, bookings, type Kos, type InsertKos, type Booking, type InsertBooking } from "@shared/schema";
+import { users, kos, bookings, type User, type Kos, type InsertUser, type InsertKos, type Booking, type InsertBooking } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, like, and, gte, lte, or, ilike } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 
 export interface IStorage {
+  // User operations
+  createUser(user: InsertUser): Promise<User>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserById(id: number): Promise<User | undefined>;
+  verifyPassword(email: string, password: string): Promise<User | null>;
+  
   // Kos operations
   getKos(id: number): Promise<Kos | undefined>;
   getAllKos(): Promise<Kos[]>;
   getKosByCity(city: string): Promise<Kos[]>;
   getKosByType(type: string): Promise<Kos[]>;
+  getKosByOwner(ownerId: number): Promise<Kos[]>;
   searchKos(query: string, city?: string, minPrice?: number, maxPrice?: number): Promise<Kos[]>;
   getFeaturedKos(): Promise<Kos[]>;
   createKos(kos: InsertKos): Promise<Kos>;
+  updateKos(id: number, kos: Partial<InsertKos>): Promise<Kos | undefined>;
+  deleteKos(id: number): Promise<boolean>;
   
   // Booking operations
   createBooking(booking: InsertBooking): Promise<Booking>;
   getBookingsByKos(kosId: number): Promise<Booking[]>;
+  getBookingsByUser(userId: number): Promise<Booking[]>;
+  getBookingsByOwner(ownerId: number): Promise<Booking[]>;
+  updateBookingStatus(id: number, status: string): Promise<Booking | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
+  // User operations
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const hashedPassword = await bcrypt.hash(insertUser.password, 10);
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        ...insertUser,
+        password: hashedPassword,
+      })
+      .returning();
+    return newUser;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
+  async getUserById(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async verifyPassword(email: string, password: string): Promise<User | null> {
+    const user = await this.getUserByEmail(email);
+    if (!user) return null;
+    
+    const isValid = await bcrypt.compare(password, user.password);
+    return isValid ? user : null;
+  }
+
+  // Kos operations
   async getKos(id: number): Promise<Kos | undefined> {
     const [kosData] = await db.select().from(kos).where(eq(kos.id, id));
     return kosData || undefined;
@@ -34,6 +79,10 @@ export class DatabaseStorage implements IStorage {
   async getKosByType(type: string): Promise<Kos[]> {
     if (type === "semua") return this.getAllKos();
     return await db.select().from(kos).where(eq(kos.type, type.toLowerCase()));
+  }
+
+  async getKosByOwner(ownerId: number): Promise<Kos[]> {
+    return await db.select().from(kos).where(eq(kos.ownerId, ownerId));
   }
 
   async searchKos(query: string, city?: string, minPrice?: number, maxPrice?: number): Promise<Kos[]> {
@@ -81,6 +130,20 @@ export class DatabaseStorage implements IStorage {
     return newKos;
   }
 
+  async updateKos(id: number, updateData: Partial<InsertKos>): Promise<Kos | undefined> {
+    const [updatedKos] = await db
+      .update(kos)
+      .set(updateData)
+      .where(eq(kos.id, id))
+      .returning();
+    return updatedKos || undefined;
+  }
+
+  async deleteKos(id: number): Promise<boolean> {
+    const result = await db.delete(kos).where(eq(kos.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
   async createBooking(insertBooking: InsertBooking): Promise<Booking> {
     const [newBooking] = await db
       .insert(bookings)
@@ -92,22 +155,79 @@ export class DatabaseStorage implements IStorage {
   async getBookingsByKos(kosId: number): Promise<Booking[]> {
     return await db.select().from(bookings).where(eq(bookings.kosId, kosId));
   }
+
+  async getBookingsByUser(userId: number): Promise<Booking[]> {
+    return await db.select().from(bookings).where(eq(bookings.userId, userId));
+  }
+
+  async getBookingsByOwner(ownerId: number): Promise<Booking[]> {
+    const ownerKos = await this.getKosByOwner(ownerId);
+    const kosIds = ownerKos.map(k => k.id);
+    if (kosIds.length === 0) return [];
+    
+    return await db.select().from(bookings).where(
+      or(...kosIds.map(id => eq(bookings.kosId, id)))
+    );
+  }
+
+  async updateBookingStatus(id: number, status: string): Promise<Booking | undefined> {
+    const [updatedBooking] = await db
+      .update(bookings)
+      .set({ status })
+      .where(eq(bookings.id, id))
+      .returning();
+    return updatedBooking || undefined;
+  }
 }
 
 export class MemStorage implements IStorage {
+  private usersList: Map<number, User>;
   private kosList: Map<number, Kos>;
   private bookingsList: Map<number, Booking>;
+  private currentUserId: number;
   private currentKosId: number;
   private currentBookingId: number;
 
   constructor() {
+    this.usersList = new Map();
     this.kosList = new Map();
     this.bookingsList = new Map();
+    this.currentUserId = 1;
     this.currentKosId = 1;
     this.currentBookingId = 1;
     
     // Initialize with sample data
     this.initializeData();
+  }
+
+  // User operations (stub implementations for MemStorage)
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const hashedPassword = await bcrypt.hash(insertUser.password, 10);
+    const user: User = {
+      id: this.currentUserId++,
+      ...insertUser,
+      password: hashedPassword,
+      phone: insertUser.phone || null,
+      createdAt: new Date(),
+    };
+    this.usersList.set(user.id, user);
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.usersList.values()).find(user => user.email === email);
+  }
+
+  async getUserById(id: number): Promise<User | undefined> {
+    return this.usersList.get(id);
+  }
+
+  async verifyPassword(email: string, password: string): Promise<User | null> {
+    const user = await this.getUserByEmail(email);
+    if (!user) return null;
+    
+    const isValid = await bcrypt.compare(password, user.password);
+    return isValid ? user : null;
   }
 
   private initializeData() {
@@ -287,6 +407,10 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getKosByOwner(ownerId: number): Promise<Kos[]> {
+    return Array.from(this.kosList.values()).filter(kos => kos.ownerId === ownerId);
+  }
+
   async searchKos(query: string, city?: string, minPrice?: number, maxPrice?: number): Promise<Kos[]> {
     return Array.from(this.kosList.values()).filter(kos => {
       const matchesQuery = !query || 
@@ -328,9 +452,27 @@ export class MemStorage implements IStorage {
       paymentType: insertKos.paymentType || "monthly",
       isAvailable: insertKos.isAvailable !== undefined ? insertKos.isAvailable : true,
       isPromoted: insertKos.isPromoted !== undefined ? insertKos.isPromoted : false,
+      ownerId: insertKos.ownerId || null,
     };
     this.kosList.set(id, kos);
     return kos;
+  }
+
+  async updateKos(id: number, updateData: Partial<InsertKos>): Promise<Kos | undefined> {
+    const existingKos = this.kosList.get(id);
+    if (!existingKos) return undefined;
+    
+    const updatedKos: Kos = {
+      ...existingKos,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.kosList.set(id, updatedKos);
+    return updatedKos;
+  }
+
+  async deleteKos(id: number): Promise<boolean> {
+    return this.kosList.delete(id);
   }
 
   async createBooking(insertBooking: InsertBooking): Promise<Booking> {
@@ -341,6 +483,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
       status: insertBooking.status || "pending",
       notes: insertBooking.notes || null,
+      userId: insertBooking.userId || null,
     };
     this.bookingsList.set(id, booking);
     return booking;
@@ -350,6 +493,32 @@ export class MemStorage implements IStorage {
     return Array.from(this.bookingsList.values()).filter(booking => 
       booking.kosId === kosId
     );
+  }
+
+  async getBookingsByUser(userId: number): Promise<Booking[]> {
+    return Array.from(this.bookingsList.values()).filter(booking => 
+      booking.userId === userId
+    );
+  }
+
+  async getBookingsByOwner(ownerId: number): Promise<Booking[]> {
+    const ownerKos = await this.getKosByOwner(ownerId);
+    const kosIds = ownerKos.map(k => k.id);
+    return Array.from(this.bookingsList.values()).filter(booking => 
+      kosIds.includes(booking.kosId)
+    );
+  }
+
+  async updateBookingStatus(id: number, status: string): Promise<Booking | undefined> {
+    const booking = this.bookingsList.get(id);
+    if (!booking) return undefined;
+    
+    const updatedBooking: Booking = {
+      ...booking,
+      status,
+    };
+    this.bookingsList.set(id, updatedBooking);
+    return updatedBooking;
   }
 }
 
