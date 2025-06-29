@@ -26,18 +26,18 @@ export default function SearchPage() {
   useEffect(() => {
     const urlParams = new URLSearchParams(location.split('?')[1] || '');
     setSearchQuery(urlParams.get('q') || '');
-    setSelectedCity(urlParams.get('city') || '');
-    setSelectedType(urlParams.get('type') || '');
-    setPriceRange(urlParams.get('price') || '');
+    setSelectedCity(urlParams.get('city') || 'all');
+    setSelectedType(urlParams.get('type') || 'semua');
+    setPriceRange(urlParams.get('price') || 'all');
   }, [location]);
 
   // Build query parameters for API
   const buildQueryParams = () => {
     const params = new URLSearchParams();
     if (searchQuery) params.set('q', searchQuery);
-    if (selectedCity) params.set('city', selectedCity);
+    if (selectedCity && selectedCity !== 'all') params.set('city', selectedCity);
     if (selectedType && selectedType !== 'semua') params.set('type', selectedType);
-    if (priceRange) params.set('price', priceRange);
+    if (priceRange && priceRange !== 'all') params.set('price', priceRange);
     return params.toString();
   };
 
@@ -62,7 +62,7 @@ export default function SearchPage() {
   };
 
   const cities = [
-    { value: "", label: "Semua Kota" },
+    { value: "all", label: "Semua Kota" },
     { value: "jakarta", label: "Jakarta" },
     { value: "bandung", label: "Bandung" },
     { value: "surabaya", label: "Surabaya" },
@@ -70,14 +70,14 @@ export default function SearchPage() {
   ];
 
   const types = [
-    { value: "", label: "Semua Tipe" },
+    { value: "semua", label: "Semua Tipe" },
     { value: "putra", label: "Putra" },
     { value: "putri", label: "Putri" },
     { value: "campur", label: "Campur" },
   ];
 
   const priceRanges = [
-    { value: "", label: "Semua Harga" },
+    { value: "all", label: "Semua Harga" },
     { value: "500000-1000000", label: "Rp 500.000 - Rp 1.000.000" },
     { value: "1000000-2000000", label: "Rp 1.000.000 - Rp 2.000.000" },
     { value: "2000000-3000000", label: "Rp 2.000.000 - Rp 3.000.000" },

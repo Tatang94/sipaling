@@ -242,6 +242,13 @@ export class MemStorage implements IStorage {
       id,
       createdAt: now,
       updatedAt: now,
+      reviewCount: insertKos.reviewCount || 0,
+      latitude: insertKos.latitude || null,
+      longitude: insertKos.longitude || null,
+      roomSize: insertKos.roomSize || null,
+      paymentType: insertKos.paymentType || "monthly",
+      isAvailable: insertKos.isAvailable !== undefined ? insertKos.isAvailable : true,
+      isPromoted: insertKos.isPromoted !== undefined ? insertKos.isPromoted : false,
     };
     this.kosList.set(id, kos);
     return kos;
@@ -253,6 +260,8 @@ export class MemStorage implements IStorage {
       ...insertBooking,
       id,
       createdAt: new Date(),
+      status: insertBooking.status || "pending",
+      notes: insertBooking.notes || null,
     };
     this.bookingsList.set(id, booking);
     return booking;

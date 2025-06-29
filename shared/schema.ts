@@ -44,6 +44,14 @@ export const insertKosSchema = createInsertSchema(kos).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  reviewCount: z.number().default(0),
+  latitude: z.string().nullable().optional(),
+  longitude: z.string().nullable().optional(),
+  roomSize: z.string().nullable().optional(),
+  paymentType: z.string().default("monthly"),
+  isAvailable: z.boolean().default(true),
+  isPromoted: z.boolean().default(false),
 });
 
 export const insertBookingSchema = createInsertSchema(bookings).omit({

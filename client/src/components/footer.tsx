@@ -11,10 +11,10 @@ export default function Footer() {
   ];
 
   const supportLinks = [
-    { href: "#", label: "FAQ" },
-    { href: "#", label: "Hubungi Kami" },
-    { href: "#", label: "Kebijakan Privasi" },
-    { href: "#", label: "Syarat & Ketentuan" },
+    { href: "/faq", label: "FAQ" },
+    { href: "/kontak", label: "Hubungi Kami" },
+    { href: "/privasi", label: "Kebijakan Privasi" },
+    { href: "/syarat", label: "Syarat & Ketentuan" },
   ];
 
   const socialLinks = [

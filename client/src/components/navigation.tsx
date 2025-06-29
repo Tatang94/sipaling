@@ -11,8 +11,8 @@ export default function Navigation() {
   const navItems = [
     { href: "/", label: "Beranda", icon: Home },
     { href: "/search", label: "Cari Kos", icon: Search },
-    { href: "#", label: "Bantuan", icon: HelpCircle },
-    { href: "#", label: "Tentang", icon: Info },
+    { href: "/bantuan", label: "Bantuan", icon: HelpCircle },
+    { href: "/tentang", label: "Tentang", icon: Info },
   ];
 
   return (

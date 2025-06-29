@@ -47,17 +47,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Search kos
   app.get("/api/kos/search", async (req, res) => {
     try {
-      const { q, city, minPrice, maxPrice, type } = req.query;
+      const { q, city, minPrice, maxPrice, type, price } = req.query;
+      
+      let min: number | undefined;
+      let max: number | undefined;
+      
+      // Parse price range
+      if (price && typeof price === 'string' && price !== 'all') {
+        const priceRange = price.split('-');
+        if (priceRange.length === 2) {
+          min = priceRange[0] ? parseFloat(priceRange[0]) : undefined;
+          max = priceRange[1] ? parseFloat(priceRange[1]) : undefined;
+        }
+      } else if (minPrice) {
+        min = parseFloat(minPrice as string);
+      }
+      
+      if (maxPrice) {
+        max = parseFloat(maxPrice as string);
+      }
       
       let kos;
       if (type && type !== "semua") {
         kos = await storage.getKosByType(type as string);
-      } else if (city) {
+        if (city && city !== 'all') {
+          kos = kos.filter(k => k.city.toLowerCase() === (city as string).toLowerCase());
+        }
+      } else if (city && city !== 'all') {
         kos = await storage.getKosByCity(city as string);
       } else {
-        const min = minPrice ? parseFloat(minPrice as string) : undefined;
-        const max = maxPrice ? parseFloat(maxPrice as string) : undefined;
-        kos = await storage.searchKos(q as string || "", city as string, min, max);
+        kos = await storage.searchKos(q as string || "", city && city !== 'all' ? city as string : undefined, min, max);
+      }
+      
+      // Apply price filter if needed
+      if (min !== undefined || max !== undefined) {
+        kos = kos.filter(k => {
+          const price = parseFloat(k.pricePerMonth);
+          return (!min || price >= min) && (!max || price <= max);
+        });
       }
       
       res.json(kos);

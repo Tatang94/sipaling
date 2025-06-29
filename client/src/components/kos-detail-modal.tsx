@@ -53,7 +53,7 @@ export default function KosDetailModal({ kos, isOpen, onClose, onBook }: KosDeta
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-hidden">
+      <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-hidden" aria-describedby="kos-description">
         <DialogHeader className="border-b border-gray-200 pb-6">
           <div className="flex justify-between items-start">
             <div>
@@ -129,7 +129,7 @@ export default function KosDetailModal({ kos, isOpen, onClose, onBook }: KosDeta
 
               <div>
                 <h3 className="text-xl font-semibold mb-4">Deskripsi</h3>
-                <p className="text-gray-600 text-sm mb-6 leading-relaxed">
+                <p id="kos-description" className="text-gray-600 text-sm mb-6 leading-relaxed">
                   {kos.description}
                 </p>
 
