@@ -31,8 +31,9 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 
 ### Data Layer
 - **Drizzle ORM**: Type-safe database queries and schema definitions
-- **Schema**: Centralized in `shared/schema.ts` with Zod validation schemas
-- **Storage Interface**: Abstract storage interface in `server/storage.ts` with in-memory implementation for development
+- **Schema**: Centralized in `shared/schema.ts` with Zod validation schemas and relations
+- **Storage Interface**: Abstract storage interface in `server/storage.ts` with PostgreSQL implementation
+- **Database**: PostgreSQL with proper relations between kos and bookings tables
 
 ### Frontend Features
 - **Home Page**: Hero section, featured listings, popular cities, promotional content
@@ -52,7 +53,7 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 ### Client-Server Communication
 1. Frontend makes HTTP requests to `/api/*` endpoints
 2. Express server processes requests through route handlers
-3. Storage layer (currently in-memory) handles data operations
+3. Storage layer (PostgreSQL with Drizzle ORM) handles data operations
 4. Responses are formatted and sent back to the client
 5. TanStack Query manages caching and state synchronization
 
@@ -109,7 +110,10 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - Database URL required via `DATABASE_URL` environment variable
 
 ## Changelog
-- June 29, 2025. Initial setup
+- June 29, 2025: Initial setup with React frontend and in-memory storage
+- June 29, 2025: Added PostgreSQL database integration with Drizzle ORM
+- June 29, 2025: Migrated from MemStorage to DatabaseStorage implementation
+- June 29, 2025: Successfully seeded database with sample kos data
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

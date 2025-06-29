@@ -1,4 +1,5 @@
 import { pgTable, text, serial, integer, boolean, decimal, timestamp } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -57,7 +58,22 @@ export const insertKosSchema = createInsertSchema(kos).omit({
 export const insertBookingSchema = createInsertSchema(bookings).omit({
   id: true,
   createdAt: true,
+}).extend({
+  status: z.string().default("pending"),
+  notes: z.string().nullable().optional(),
 });
+
+// Relations
+export const kosRelations = relations(kos, ({ many }) => ({
+  bookings: many(bookings),
+}));
+
+export const bookingsRelations = relations(bookings, ({ one }) => ({
+  kos: one(kos, {
+    fields: [bookings.kosId],
+    references: [kos.id],
+  }),
+}));
 
 export type InsertKos = z.infer<typeof insertKosSchema>;
 export type Kos = typeof kos.$inferSelect;

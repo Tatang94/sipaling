@@ -1,4 +1,6 @@
 import { kos, bookings, type Kos, type InsertKos, type Booking, type InsertBooking } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
   // Kos operations
@@ -13,6 +15,83 @@ export interface IStorage {
   // Booking operations
   createBooking(booking: InsertBooking): Promise<Booking>;
   getBookingsByKos(kosId: number): Promise<Booking[]>;
+}
+
+export class DatabaseStorage implements IStorage {
+  async getKos(id: number): Promise<Kos | undefined> {
+    const [kosData] = await db.select().from(kos).where(eq(kos.id, id));
+    return kosData || undefined;
+  }
+
+  async getAllKos(): Promise<Kos[]> {
+    return await db.select().from(kos);
+  }
+
+  async getKosByCity(city: string): Promise<Kos[]> {
+    return await db.select().from(kos).where(eq(kos.city, city.toLowerCase()));
+  }
+
+  async getKosByType(type: string): Promise<Kos[]> {
+    if (type === "semua") return this.getAllKos();
+    return await db.select().from(kos).where(eq(kos.type, type.toLowerCase()));
+  }
+
+  async searchKos(query: string, city?: string, minPrice?: number, maxPrice?: number): Promise<Kos[]> {
+    let queryBuilder = db.select().from(kos);
+    
+    // Apply filters based on parameters
+    if (query || city || minPrice || maxPrice) {
+      // For simplicity, we'll get all and filter in memory for complex queries
+      const allKos = await db.select().from(kos);
+      
+      return allKos.filter(k => {
+        const matchesQuery = !query || 
+          k.name.toLowerCase().includes(query.toLowerCase()) ||
+          k.description.toLowerCase().includes(query.toLowerCase()) ||
+          k.address.toLowerCase().includes(query.toLowerCase());
+        
+        const matchesCity = !city || k.city.toLowerCase() === city.toLowerCase();
+        
+        const price = parseFloat(k.pricePerMonth);
+        const matchesPrice = (!minPrice || price >= minPrice) && (!maxPrice || price <= maxPrice);
+        
+        return matchesQuery && matchesCity && matchesPrice && k.isAvailable;
+      });
+    }
+    
+    return await queryBuilder;
+  }
+
+  async getFeaturedKos(): Promise<Kos[]> {
+    const allKos = await db.select().from(kos);
+    return allKos
+      .filter(k => k.isAvailable)
+      .sort((a, b) => {
+        if (a.isPromoted && !b.isPromoted) return -1;
+        if (!a.isPromoted && b.isPromoted) return 1;
+        return parseFloat(b.rating) - parseFloat(a.rating);
+      });
+  }
+
+  async createKos(insertKos: InsertKos): Promise<Kos> {
+    const [newKos] = await db
+      .insert(kos)
+      .values(insertKos)
+      .returning();
+    return newKos;
+  }
+
+  async createBooking(insertBooking: InsertBooking): Promise<Booking> {
+    const [newBooking] = await db
+      .insert(bookings)
+      .values(insertBooking)
+      .returning();
+    return newBooking;
+  }
+
+  async getBookingsByKos(kosId: number): Promise<Booking[]> {
+    return await db.select().from(bookings).where(eq(bookings.kosId, kosId));
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -274,4 +353,4 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
