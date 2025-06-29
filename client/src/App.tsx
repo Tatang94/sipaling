@@ -3,15 +3,40 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useState, useEffect } from "react";
+import SplashScreen from "@/pages/splash";
 import Home from "@/pages/home";
 import Search from "@/pages/search";
+import LoginPage from "@/pages/login";
+import BantuanPage from "@/pages/bantuan";
 import NotFound from "@/pages/not-found";
 
 function Router() {
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    const hasSeenSplash = localStorage.getItem("hasSeenSplash");
+    if (hasSeenSplash) {
+      setShowSplash(false);
+    } else {
+      const timer = setTimeout(() => {
+        setShowSplash(false);
+        localStorage.setItem("hasSeenSplash", "true");
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  if (showSplash) {
+    return <SplashScreen />;
+  }
+
   return (
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/search" component={Search} />
+      <Route path="/login" component={LoginPage} />
+      <Route path="/bantuan" component={BantuanPage} />
       <Route component={NotFound} />
     </Switch>
   );
