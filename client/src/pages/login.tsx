@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showWhatsAppVerification, setShowWhatsAppVerification] = useState(false);
+  const [activeTab, setActiveTab] = useState("login");
   const [whatsAppData, setWhatsAppData] = useState({
     phone: "",
     verificationCode: "",
@@ -97,11 +98,19 @@ export default function LoginPage() {
         confirmPassword: "",
         role: "pencari",
       });
+
     },
     onError: (error: Error) => {
+      let errorMessage = error.message;
+      
+      // Provide more helpful error messages
+      if (errorMessage.includes("Email sudah terdaftar")) {
+        errorMessage = "Email ini sudah terdaftar. Silakan gunakan email lain atau masuk dengan akun yang sudah ada.";
+      }
+      
       toast({
         title: "Registrasi Gagal",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -114,6 +123,43 @@ export default function LoginPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validation checks
+    if (!registerData.name.trim()) {
+      toast({
+        title: "Error",
+        description: "Nama lengkap harus diisi",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!registerData.email.trim()) {
+      toast({
+        title: "Error", 
+        description: "Email harus diisi",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!registerData.phone.trim()) {
+      toast({
+        title: "Error",
+        description: "Nomor WhatsApp harus diisi", 
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (registerData.password.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password minimal 6 karakter",
+        variant: "destructive",
+      });
+      return;
+    }
     
     if (registerData.password !== registerData.confirmPassword) {
       toast({
@@ -252,10 +298,17 @@ export default function LoginPage() {
 
                   <Button 
                     type="submit" 
-                    className="w-full bg-primary hover:bg-primary/90"
-                    disabled={isLoading}
+                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95"
+                    disabled={loginMutation.isPending}
                   >
-                    {isLoading ? "Memproses..." : "Masuk"}
+                    {loginMutation.isPending ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        <span>Masuk...</span>
+                      </div>
+                    ) : (
+                      "Masuk"
+                    )}
                   </Button>
                 </form>
               </TabsContent>
@@ -386,10 +439,17 @@ export default function LoginPage() {
 
                   <Button 
                     type="submit" 
-                    className="w-full bg-primary hover:bg-primary/90"
-                    disabled={isLoading}
+                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95"
+                    disabled={registerMutation.isPending}
                   >
-                    {isLoading ? "Memproses..." : "Daftar"}
+                    {registerMutation.isPending ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        <span>Mendaftar...</span>
+                      </div>
+                    ) : (
+                      "Daftar"
+                    )}
                   </Button>
                 </form>
               </TabsContent>
