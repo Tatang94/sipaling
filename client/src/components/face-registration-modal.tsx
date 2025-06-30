@@ -15,6 +15,8 @@ interface FaceRegistrationModalProps {
 interface SimpleFaceData {
   imageData: string;
   timestamp: string;
+  faceDetected?: boolean;
+  faceDescriptor?: number[];
 }
 
 export function FaceRegistrationModal({ 
@@ -23,7 +25,7 @@ export function FaceRegistrationModal({
   onFaceRegistered,
   userName 
 }: FaceRegistrationModalProps) {
-  const [capturedImages, setCapturedImages] = useState<string[]>([]);
+  const [capturedFaceData, setCapturedFaceData] = useState<SimpleFaceData[]>([]);
   const [currentStep, setCurrentStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
@@ -31,14 +33,23 @@ export function FaceRegistrationModal({
   const REQUIRED_PHOTOS = 3; // Ambil 3 foto untuk akurasi yang lebih baik
 
   const handleCameraCapture = async (faceData: SimpleFaceData) => {
-    const newImages = [...capturedImages, faceData.imageData];
-    setCapturedImages(newImages);
+    console.log('Face data captured:', faceData);
+    console.log('Face detected:', faceData.faceDetected);
+    console.log('Face descriptor available:', !!faceData.faceDescriptor);
     
-    if (newImages.length < REQUIRED_PHOTOS) {
-      setCurrentStep(newImages.length + 1);
+    const newFaceData = [...capturedFaceData, faceData];
+    setCapturedFaceData(newFaceData);
+    
+    if (newFaceData.length < REQUIRED_PHOTOS) {
+      setCurrentStep(newFaceData.length + 1);
+      
+      const message = faceData.faceDetected 
+        ? `Wajah berhasil dideteksi! Ambil ${REQUIRED_PHOTOS - newFaceData.length} foto lagi`
+        : `Foto ${newFaceData.length} berhasil. Ambil ${REQUIRED_PHOTOS - newFaceData.length} foto lagi`;
+        
       toast({
-        title: `Foto ${newImages.length} Berhasil`,
-        description: `Ambil ${REQUIRED_PHOTOS - newImages.length} foto lagi untuk melengkapi registrasi`,
+        title: `Foto ${newFaceData.length} Berhasil`,
+        description: message,
         variant: "default",
       });
     } else {
@@ -49,20 +60,31 @@ export function FaceRegistrationModal({
         // Simulate face processing
         await new Promise(resolve => setTimeout(resolve, 2000));
         
-        // For demo purposes, we'll use the first image as the face data
-        const faceData = newImages[0];
+        // Gunakan data yang memiliki face descriptor jika tersedia
+        const bestFaceData = newFaceData.find(data => data.faceDescriptor) || newFaceData[0];
+        
+        // Package complete face data
+        const completeData = {
+          imageData: bestFaceData.imageData,
+          timestamp: bestFaceData.timestamp,
+          allPhotos: newFaceData,
+          ...(bestFaceData.faceDetected && { faceDetected: true }),
+          ...(bestFaceData.faceDescriptor && { faceDescriptor: bestFaceData.faceDescriptor })
+        };
         
         toast({
           title: "Registrasi Berhasil",
-          description: "Wajah Anda telah terdaftar. Sekarang Anda dapat login menggunakan wajah.",
+          description: bestFaceData.faceDetected 
+            ? "Wajah berhasil diregistrasi dengan AI Face Detection!"
+            : "Wajah berhasil diregistrasi!",
           variant: "default",
         });
         
-        onFaceRegistered(faceData);
+        onFaceRegistered(JSON.stringify(completeData));
         onClose();
         
         // Reset state
-        setCapturedImages([]);
+        setCapturedFaceData([]);
         setCurrentStep(1);
         
       } catch (error) {
@@ -88,7 +110,7 @@ export function FaceRegistrationModal({
   };
 
   const resetRegistration = () => {
-    setCapturedImages([]);
+    setCapturedFaceData([]);
     setCurrentStep(1);
     setIsProcessing(false);
   };
@@ -150,9 +172,9 @@ export function FaceRegistrationModal({
                   <div
                     key={index}
                     className={`w-3 h-3 rounded-full ${
-                      index < capturedImages.length
+                      index < capturedFaceData.length
                         ? 'bg-green-500'
-                        : index === capturedImages.length
+                        : index === capturedFaceData.length
                         ? 'bg-blue-500'
                         : 'bg-gray-300'
                     }`}
@@ -160,7 +182,7 @@ export function FaceRegistrationModal({
                 ))}
               </div>
               
-              {capturedImages.length > 0 && (
+              {capturedFaceData.length > 0 && (
                 <div className="text-center">
                   <Button
                     onClick={resetRegistration}

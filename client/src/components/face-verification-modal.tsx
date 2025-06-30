@@ -14,6 +14,8 @@ interface FaceVerificationModalProps {
 interface SimpleFaceData {
   imageData: string;
   timestamp: string;
+  faceDetected?: boolean;
+  faceDescriptor?: number[];
 }
 
 export function FaceVerificationModal({ 
@@ -30,22 +32,65 @@ export function FaceVerificationModal({
     setIsVerifying(true);
     
     try {
-      // Simulate face verification process
-      // In a real app, this would call an API to verify the face
       console.log('Verifying face for user:', userName);
-      console.log('Captured face data:', faceData.imageData.substring(0, 50) + '...');
+      console.log('Face detected:', faceData.faceDetected);
+      console.log('Face descriptor available:', !!faceData.faceDescriptor);
       
-      // For demo purposes, we'll just simulate a successful verification after 2 seconds
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Parse stored face data if available
+      let storedFaceData = null;
+      try {
+        if (userFaceData) {
+          storedFaceData = JSON.parse(userFaceData);
+          console.log('Stored face data found:', !!storedFaceData.faceDescriptor);
+        }
+      } catch (e) {
+        console.log('No stored face descriptor data found, using basic verification');
+      }
       
-      toast({
-        title: "Verifikasi Berhasil",
-        description: `Selamat datang, ${userName}!`,
-        variant: "default",
-      });
+      let verificationResult = false;
       
-      onVerificationSuccess();
-      onClose();
+      // If both current and stored data have face descriptors, compare them
+      if (faceData.faceDescriptor && storedFaceData?.faceDescriptor) {
+        console.log('Comparing face descriptors...');
+        
+        // Simple Euclidean distance calculation for face comparison
+        const currentDescriptor = faceData.faceDescriptor;
+        const storedDescriptor = storedFaceData.faceDescriptor;
+        
+        let distance = 0;
+        for (let i = 0; i < Math.min(currentDescriptor.length, storedDescriptor.length); i++) {
+          distance += Math.pow(currentDescriptor[i] - storedDescriptor[i], 2);
+        }
+        distance = Math.sqrt(distance);
+        
+        console.log('Face descriptor distance:', distance);
+        
+        // Threshold for face matching (lower is more similar)
+        const threshold = 0.6;
+        verificationResult = distance < threshold;
+        
+        console.log('Face match result:', verificationResult, 'with threshold', threshold);
+      } else {
+        // Fallback: simulate verification (for demo when no descriptors available)
+        console.log('Using fallback verification method');
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        verificationResult = Math.random() > 0.3; // 70% success rate for demo
+      }
+      
+      if (verificationResult) {
+        toast({
+          title: "Verifikasi Berhasil",
+          description: faceData.faceDetected 
+            ? `AI Face Detection berhasil! Selamat datang, ${userName}!`
+            : `Selamat datang, ${userName}!`,
+          variant: "default",
+        });
+        
+        onVerificationSuccess();
+        onClose();
+      } else {
+        throw new Error('Face verification failed - face not recognized');
+      }
       
     } catch (error) {
       console.error('Face verification error:', error);

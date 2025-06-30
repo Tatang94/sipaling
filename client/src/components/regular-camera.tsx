@@ -1,10 +1,13 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Camera, CameraOff, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import * as faceapi from 'face-api.js';
 
 interface SimpleFaceData {
   imageData: string;
   timestamp: string;
+  faceDetected?: boolean;
+  faceDescriptor?: number[];
 }
 
 interface RegularCameraProps {
@@ -23,10 +26,48 @@ export function RegularCamera({
   className = ""
 }: RegularCameraProps) {
   const [isCapturing, setIsCapturing] = useState(false);
-  const [captureStep, setCaptureStep] = useState<'ready' | 'capturing' | 'processing' | 'success' | 'failed'>('ready');
+  const [captureStep, setCaptureStep] = useState<'ready' | 'loading' | 'capturing' | 'processing' | 'success' | 'failed'>('ready');
+  const [modelsLoaded, setModelsLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  // Load face-api.js models
+  const loadModels = useCallback(async () => {
+    try {
+      setCaptureStep('loading');
+      console.log('Loading face-api.js models...');
+      
+      const MODEL_URL = '/models'; // Models akan disimpan di public/models
+      
+      // Load models satu per satu untuk debugging
+      console.log('Loading tiny face detector...');
+      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+      console.log('Tiny face detector loaded');
+      
+      console.log('Loading face landmark 68...');
+      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+      console.log('Face landmark 68 loaded');
+      
+      console.log('Loading face recognition net...');
+      await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+      console.log('Face recognition net loaded');
+      
+      console.log('All face-api.js models loaded successfully');
+      setModelsLoaded(true);
+      setCaptureStep('ready');
+    } catch (error: any) {
+      console.error('Error loading face-api.js models:', error);
+      console.log('Specific error details:', {
+        name: error?.name || 'Unknown',
+        message: error?.message || String(error),
+        stack: error?.stack || undefined
+      });
+      // Fallback to simple mode without face detection
+      setModelsLoaded(false);
+      setCaptureStep('ready');
+    }
+  }, []);
 
   const startCamera = useCallback(async () => {
     try {
@@ -110,7 +151,7 @@ export function RegularCamera({
     setCaptureStep('ready');
   }, []);
 
-  const capturePhoto = useCallback(() => {
+  const capturePhoto = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current) return;
 
     setCaptureStep('processing');
@@ -128,6 +169,31 @@ export function RegularCamera({
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0);
     
+    let faceDetected = false;
+    let faceDescriptor = null;
+
+    // Jika models sudah loaded, lakukan face detection
+    if (modelsLoaded) {
+      try {
+        console.log('Detecting faces...');
+        const detections = await faceapi
+          .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+          .withFaceLandmarks()
+          .withFaceDescriptors();
+
+        if (detections.length > 0) {
+          faceDetected = true;
+          faceDescriptor = detections[0].descriptor;
+          console.log(`Found ${detections.length} face(s)`);
+        } else {
+          console.log('No faces detected');
+        }
+      } catch (error) {
+        console.error('Face detection error:', error);
+        // Continue without face detection
+      }
+    }
+    
     const imageData = canvas.toDataURL('image/jpeg', 0.8);
     
     setCaptureStep('success');
@@ -135,16 +201,24 @@ export function RegularCamera({
     
     const faceData: SimpleFaceData = {
       imageData,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      // Add face detection results
+      ...(faceDetected && { faceDetected: true }),
+      ...(faceDescriptor && { faceDescriptor: Array.from(faceDescriptor) })
     };
     
-    console.log('Foto berhasil diambil');
+    console.log('Foto berhasil diambil', faceDetected ? 'dengan deteksi wajah' : 'tanpa deteksi wajah');
     onCapture(faceData);
-  }, [onCapture, onError, stopCamera]);
+  }, [onCapture, onError, stopCamera, modelsLoaded]);
 
   const resetCapture = () => {
     setCaptureStep('ready');
   };
+
+  // Load face-api.js models saat component mount
+  useEffect(() => {
+    loadModels();
+  }, [loadModels]);
 
   // Pastikan video element tersedia setelah component mount
   useEffect(() => {
@@ -175,16 +249,22 @@ export function RegularCamera({
     return () => {
       stopCamera();
     };
-  }, [stopCamera]);
+  }, [stopCamera, loadModels]);
 
   const getStatusText = () => {
     switch (captureStep) {
+      case 'loading':
+        return "Memuat AI face detection models...";
       case 'ready':
-        return "Tekan tombol untuk mulai menggunakan kamera";
+        return modelsLoaded 
+          ? "AI Face Detection siap! Tekan tombol untuk mulai" 
+          : "Tekan tombol untuk mulai menggunakan kamera";
       case 'capturing':
         return "Posisikan wajah di depan kamera dan tekan tombol foto";
       case 'processing':
-        return "Memproses foto...";
+        return modelsLoaded 
+          ? "Memproses foto dengan AI face detection..." 
+          : "Memproses foto...";
       case 'success':
         return mode === 'register' ? "Foto berhasil diambil untuk registrasi!" : "Foto berhasil diambil untuk login!";
       case 'failed':
@@ -201,9 +281,23 @@ export function RegularCamera({
 
   return (
     <div className={`flex flex-col items-center space-y-4 ${className}`}>
-      {/* Debug info */}
-      <div className="text-xs text-gray-500">
-        Debug: isCapturing={isCapturing.toString()}, step={captureStep}
+      {/* Status AI Face Detection */}
+      <div className="text-xs text-center">
+        <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${
+          modelsLoaded ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+        }`}>
+          {modelsLoaded ? (
+            <>
+              <CheckCircle className="w-3 h-3" />
+              <span>AI Face Detection Aktif</span>
+            </>
+          ) : (
+            <>
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span>Memuat AI Models...</span>
+            </>
+          )}
+        </div>
       </div>
       
       {/* Regular Camera View */}
