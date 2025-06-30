@@ -182,6 +182,8 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - June 30, 2025: Migrated from MemStorage to DatabaseStorage with authentic Tasikmalaya data
 - June 30, 2025: Database schema pushed successfully with all tables created
 - June 30, 2025: Application now fully operational with persistent PostgreSQL storage
+- June 30, 2025: Cleared all sample data from database per user request 
+- June 30, 2025: Database ready for user to upload their own kos data
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
