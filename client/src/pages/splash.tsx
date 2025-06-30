@@ -12,12 +12,12 @@ export default function SplashScreen() {
       setProgress((prev) => {
         if (prev >= 100) {
           clearInterval(timer);
-          setTimeout(() => setLocation("/"), 500);
+          setTimeout(() => setLocation("/"), 300);
           return 100;
         }
-        return prev + 2;
+        return prev + 4;
       });
-    }, 50);
+    }, 40);
 
     return () => clearInterval(timer);
   }, [setLocation]);
@@ -54,38 +54,38 @@ export default function SplashScreen() {
         <motion.div
           initial={{ scale: 0, rotate: -180 }}
           animate={{ scale: 1, rotate: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="mb-8"
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="mb-6"
         >
           <div className="relative">
             <motion.div
               animate={{ rotate: 360 }}
-              transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-              className="absolute inset-0 rounded-full border-4 border-white/30 border-t-white"
+              transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0 rounded-full border-3 border-white/30 border-t-white"
             />
-            <div className="w-32 h-32 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-              <Home className="w-16 h-16 text-white" />
+            <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+              <Home className="w-12 h-12 text-white" />
             </div>
           </div>
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.3 }}
-          className="mb-8"
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="mb-6"
         >
-          <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 tracking-tight">
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-3 tracking-tight">
             SI PALING KOST
           </h1>
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: "100%" }}
-            transition={{ duration: 1, delay: 0.8 }}
-            className="h-1 bg-white/50 rounded-full mx-auto mb-4"
-            style={{ maxWidth: "200px" }}
+            transition={{ duration: 0.8, delay: 0.5 }}
+            className="h-1 bg-white/50 rounded-full mx-auto mb-3"
+            style={{ maxWidth: "150px" }}
           />
-          <p className="text-xl text-white/90 font-light">
+          <p className="text-lg text-white/90 font-light">
             Platform Terdepan Pencarian Kos Indonesia
           </p>
         </motion.div>
@@ -93,16 +93,16 @@ export default function SplashScreen() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 1.2 }}
-          className="space-y-4"
+          transition={{ duration: 0.4, delay: 0.8 }}
+          className="space-y-3"
         >
           <div className="flex items-center justify-center space-x-2 text-white/80">
-            <Sparkles className="w-5 h-5" />
+            <Sparkles className="w-4 h-4" />
             <span className="text-sm font-medium">Memuat pengalaman terbaik...</span>
           </div>
           
           {/* Progress Bar */}
-          <div className="w-64 h-2 bg-white/20 rounded-full mx-auto overflow-hidden">
+          <div className="w-48 h-1.5 bg-white/20 rounded-full mx-auto overflow-hidden">
             <motion.div
               className="h-full bg-white rounded-full"
               style={{ width: `${progress}%` }}
@@ -110,17 +110,17 @@ export default function SplashScreen() {
             />
           </div>
           
-          <div className="text-white/60 text-sm font-medium">
+          <div className="text-white/60 text-xs font-medium">
             {progress}%
           </div>
         </motion.div>
 
         {/* Bottom Features */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 1.5 }}
-          className="mt-12 grid grid-cols-3 gap-8 max-w-md mx-auto"
+          transition={{ duration: 0.6, delay: 1.0 }}
+          className="mt-8 grid grid-cols-3 gap-6 max-w-xs mx-auto"
         >
           {[
             { icon: "🏠", text: "Ribuan Kos" },
@@ -131,10 +131,10 @@ export default function SplashScreen() {
               key={index}
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: 1.8 + index * 0.2 }}
+              transition={{ duration: 0.4, delay: 1.2 + index * 0.1 }}
               className="text-center"
             >
-              <div className="text-2xl mb-2">{feature.icon}</div>
+              <div className="text-xl mb-1">{feature.icon}</div>
               <div className="text-white/80 text-xs font-medium">{feature.text}</div>
             </motion.div>
           ))}
