@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Star, MapPin, Heart, Bed, Armchair, Shirt, Snowflake, Wifi, Car, Utensils, Shield, Tv } from "lucide-react";
-import { type Kos } from "@shared/schema";
-import { formatPrice, formatRating } from "@/lib/utils";
+import { Star, Heart, MapPin, X, Wifi, Car, Utensils, AirVent, Tv, Bath, Shield, Coffee } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
+import { formatPrice, formatRating } from "@/lib/utils";
+import type { Kos } from "@/shared/schema";
 
 interface KosDetailModalProps {
   kos: Kos | null;
@@ -16,57 +16,46 @@ interface KosDetailModalProps {
   onBook: (kos: Kos) => void;
 }
 
-const facilityIcons: { [key: string]: any } = {
+const facilityIcons: Record<string, any> = {
   "WiFi": Wifi,
-  "AC": Snowflake,
   "Parkir": Car,
   "Dapur": Utensils,
-  "Laundry": Shirt,
-  "Keamanan 24/7": Shield,
+  "AC": AirVent,
   "TV": Tv,
-  "Kasur": Bed,
-  "Meja": Armchair,
-  "Lemari": Armchair,
-  "Ruang Belajar": Bed,
-  "Khusus Putri": Shield,
-  "Dapur Bersama": Utensils,
-  "Parkir Motor": Car,
-  "Kamar Mandi Dalam": Utensils,
-  "WiFi 100Mbps": Wifi,
-  "Gym": Bed,
-  "Cafe": Utensils,
-  "Laundry Premium": Shirt,
+  "Kamar Mandi Dalam": Bath,
+  "Keamanan 24 Jam": Shield,
+  "Area Makan": Coffee,
 };
 
 export default function KosDetailModal({ kos, isOpen, onClose, onBook }: KosDetailModalProps) {
   const [isFavorited, setIsFavorited] = useState(false);
-  const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   if (!kos) return null;
 
   const handleBook = () => {
-    // Check if user is logged in
-    const user = localStorage.getItem("user");
-    if (!user) {
+    // Check if user is logged in (simple check for demo)
+    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+    
+    if (!isLoggedIn) {
       toast({
         title: "Login Diperlukan",
         description: "Silakan login terlebih dahulu untuk melakukan booking",
-        variant: "destructive",
       });
       onClose();
-      // Redirect to login page
-      setTimeout(() => {
-        setLocation("/login");
-      }, 1500);
+      setLocation("/login");
       return;
     }
 
     // Create booking data
     const bookingData = {
+      id: Date.now(),
       kosId: kos.id,
       kosName: kos.name,
+      ownerName: kos.ownerName,
       ownerPhone: kos.ownerPhone,
+      address: kos.address,
       pricePerMonth: kos.pricePerMonth,
       bookingDate: new Date().toISOString().split('T')[0],
     };
@@ -90,148 +79,131 @@ export default function KosDetailModal({ kos, isOpen, onClose, onBook }: KosDeta
   };
 
   const getFacilityIcon = (facility: string) => {
-    const Icon = facilityIcons[facility] || Utensils;
-    return <Icon className="w-4 h-4 mr-2 text-gray-400" />;
+    return facilityIcons[facility] || Utensils;
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-hidden" aria-describedby="kos-description">
-        <DialogHeader className="border-b border-gray-200 pb-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <DialogTitle className="text-2xl font-bold text-gray-900 mb-2">
-                {kos.name}
-              </DialogTitle>
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center text-sm text-gray-600">
-                  <Star className="w-4 h-4 text-yellow-400 mr-1 fill-current" />
-                  <span className="mr-2">{formatRating(kos.rating)}</span>
-                  <span>({kos.reviewCount} ulasan)</span>
-                </div>
-                <Badge className={kos.type === 'putra' ? 'bg-blue-500' : kos.type === 'putri' ? 'bg-pink-500' : 'bg-purple-500'}>
-                  {kos.type.charAt(0).toUpperCase() + kos.type.slice(1)}
-                </Badge>
-              </div>
+      <DialogContent className="max-w-4xl w-full max-h-[90vh] p-0 overflow-hidden" aria-describedby="kos-description">
+        <DialogHeader className="relative px-4 md:px-6 py-4 border-b border-gray-200">
+          <DialogTitle className="text-xl md:text-2xl font-bold text-gray-900 pr-10">
+            {kos.name}
+          </DialogTitle>
+          <div className="flex items-center space-x-3 mt-2">
+            <div className="flex items-center text-sm text-gray-600">
+              <Star className="w-4 h-4 text-yellow-400 mr-1 fill-current" />
+              <span className="mr-2">{formatRating(kos.rating)}</span>
+              <span>({kos.reviewCount} ulasan)</span>
             </div>
-            <DialogClose asChild>
-              <Button variant="ghost" size="icon">
-                <X className="w-5 h-5" />
-              </Button>
-            </DialogClose>
+            <Badge className={kos.type === 'putra' ? 'bg-blue-500' : kos.type === 'putri' ? 'bg-pink-500' : 'bg-purple-500'}>
+              {kos.type.charAt(0).toUpperCase() + kos.type.slice(1)}
+            </Badge>
           </div>
+          <DialogClose asChild>
+            <Button variant="ghost" size="icon" className="absolute right-2 top-2 md:right-4 md:top-4">
+              <X className="w-5 h-5" />
+            </Button>
+          </DialogClose>
         </DialogHeader>
 
         <ScrollArea className="max-h-[calc(90vh-200px)]">
-          <div className="p-6 space-y-8">
-            {/* Image Gallery */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {kos.images.map((image, index) => (
-                <img
-                  key={index}
-                  src={image}
-                  alt={`Foto ${kos.name} ${index + 1}`}
-                  className="rounded-lg object-cover h-32 w-full cursor-pointer hover:opacity-80 transition-opacity"
-                />
-              ))}
+          <div className="p-4 md:p-6 space-y-6">
+            {/* Description */}
+            <div id="kos-description">
+              <p className="text-gray-600 leading-relaxed">{kos.description}</p>
             </div>
 
-            {/* Kos Info */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div>
-                <h3 className="text-xl font-semibold mb-4">Informasi Kos</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Tipe Kos:</span>
-                    <span className="font-medium capitalize">{kos.type}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Ukuran Kamar:</span>
-                    <span className="font-medium">{kos.roomSize || "3x4 meter"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Kamar Tersedia:</span>
-                    <span className="font-medium text-primary">{kos.availableRooms} dari {kos.totalRooms} kamar</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Sistem Pembayaran:</span>
-                    <span className="font-medium capitalize">{kos.paymentType}</span>
-                  </div>
-                </div>
-
-                <h4 className="text-lg font-semibold mt-6 mb-3">Fasilitas</h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {kos.facilities.map((facility, index) => (
-                    <div key={index} className="flex items-center text-sm">
-                      {getFacilityIcon(facility)}
-                      {facility}
-                    </div>
-                  ))}
+            {/* Lokasi */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3 flex items-center">
+                <MapPin className="w-5 h-5 mr-2 text-primary" />
+                Lokasi
+              </h3>
+              <p className="text-gray-600 text-sm mb-3">{kos.address}</p>
+              
+              {/* Map Placeholder */}
+              <div className="bg-gray-100 rounded-lg h-32 flex items-center justify-center">
+                <div className="text-center text-gray-500">
+                  <MapPin className="w-8 h-8 mx-auto mb-2" />
+                  <span className="text-sm">Peta Lokasi</span>
                 </div>
               </div>
+            </div>
 
-              <div>
-                <h3 className="text-xl font-semibold mb-4">Deskripsi</h3>
-                <p id="kos-description" className="text-gray-600 text-sm mb-6 leading-relaxed">
-                  {kos.description}
-                </p>
+            {/* Fasilitas */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3">Fasilitas</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {kos.facilities.map((facility, index) => {
+                  const Icon = getFacilityIcon(facility);
+                  return (
+                    <div key={index} className="flex items-center text-sm text-gray-600 py-1">
+                      <Icon className="w-4 h-4 mr-2 text-primary flex-shrink-0" />
+                      <span>{facility}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
 
-                <h4 className="text-lg font-semibold mb-3">Lokasi</h4>
-                <p className="text-gray-600 text-sm mb-4 flex items-start">
-                  <MapPin className="w-4 h-4 mr-2 text-gray-400 mt-0.5 flex-shrink-0" />
-                  {kos.address}
-                </p>
-                
-                {/* Map Placeholder */}
-                <div className="bg-gray-200 rounded-lg h-32 flex items-center justify-center">
-                  <div className="text-center text-gray-500">
-                    <MapPin className="w-8 h-8 mx-auto mb-2" />
-                    <span className="text-sm">Peta Lokasi</span>
-                  </div>
+            {/* Informasi Kamar */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3">Informasi Kamar</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-600">Tipe:</span>
+                  <p className="font-medium capitalize">{kos.type}</p>
                 </div>
-
-                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                  <h5 className="font-semibold text-sm mb-2">Kontak Pemilik</h5>
-                  <p className="text-sm text-gray-600">{kos.ownerName}</p>
-                  <p className="text-sm text-gray-600">{kos.ownerPhone}</p>
+                <div>
+                  <span className="text-gray-600">Tersedia:</span>
+                  <p className="font-medium text-primary">{kos.availableRooms} kamar</p>
                 </div>
+                <div>
+                  <span className="text-gray-600">Ukuran:</span>
+                  <p className="font-medium">{kos.roomSize || "3x4 meter"}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Pembayaran:</span>
+                  <p className="font-medium capitalize">{kos.paymentType}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Kontak Pemilik */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="text-lg font-semibold mb-3">Kontak Pemilik</h3>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-900">{kos.ownerName}</p>
+                <p className="text-sm text-gray-600">{kos.ownerPhone}</p>
               </div>
             </div>
           </div>
         </ScrollArea>
 
         {/* Pricing & Booking */}
-        <div className="border-t border-gray-200 p-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <div className="text-3xl font-bold text-primary mb-2">
-                {formatPrice(kos.pricePerMonth)}
-                <span className="text-lg text-gray-500 font-normal">/bulan</span>
-              </div>
-              <div className="flex items-center text-sm text-gray-600">
-                <Star className="w-4 h-4 text-yellow-400 mr-1 fill-current" />
-                <span className="mr-2">{formatRating(kos.rating)}</span>
-                <span>({kos.reviewCount} ulasan)</span>
-              </div>
+        <div className="border-t border-gray-200 px-4 py-4 md:px-6 bg-white">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-2xl md:text-3xl font-bold text-primary">
+              {formatPrice(kos.pricePerMonth)}
+              <span className="text-base md:text-lg text-gray-500 font-normal">/bulan</span>
             </div>
-            <div className="flex space-x-3 w-full md:w-auto">
-              <Button
-                variant="outline"
-                className="flex-1 md:flex-none"
-                onClick={() => setIsFavorited(!isFavorited)}
-              >
-                <Heart className={`w-4 h-4 mr-2 ${isFavorited ? 'fill-red-500 text-red-500' : ''}`} />
-                Simpan
-              </Button>
-              <Button 
-                className="bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-lg font-medium transition-colors flex-1 md:flex-none"
-                onClick={handleBook}
-                disabled={!kos.isAvailable || kos.availableRooms === 0}
-              >
-                {kos.isAvailable && kos.availableRooms > 0 ? "Book Sekarang" : "Tidak Tersedia"}
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFavorited(!isFavorited)}
+            >
+              <Heart className={`w-4 h-4 mr-1 ${isFavorited ? 'fill-red-500 text-red-500' : ''}`} />
+              Simpan
+            </Button>
           </div>
+          
+          <Button 
+            className="w-full bg-primary hover:bg-primary/90 text-white py-3 rounded-lg font-medium transition-colors"
+            onClick={handleBook}
+            disabled={!kos.isAvailable || kos.availableRooms === 0}
+          >
+            {kos.isAvailable && kos.availableRooms > 0 ? "Book Sekarang" : "Tidak Tersedia"}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
