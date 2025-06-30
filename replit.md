@@ -214,6 +214,8 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - June 30, 2025: Connected Neon PostgreSQL database with provided credentials
 - June 30, 2025: Database schema pushed successfully and seeded with Tasikmalaya kos data
 - June 30, 2025: Application fully operational with persistent PostgreSQL storage
+- June 30, 2025: Cleared all sample data from database per user request
+- June 30, 2025: Database ready for user to upload their own kos data
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
