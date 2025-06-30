@@ -6,8 +6,8 @@ import { neonConfig } from '@neondatabase/serverless';
 
 neonConfig.webSocketConstructor = ws;
 
-// Construct DATABASE_URL from environment variables
-const DATABASE_URL = `postgresql://${process.env.PGUSER}:${process.env.PGPASSWORD}@${process.env.PGHOST}:${process.env.PGPORT}/${process.env.PGDATABASE}?sslmode=require`;
+// Use the provided Neon database URL
+const DATABASE_URL = process.env.DATABASE_URL || "postgresql://neondb_owner:npg_lyKI3SFjO6Bp@ep-curly-tree-a8n9sa6t-pooler.eastus2.azure.neon.tech/neondb?sslmode=require&channel_binding=require";
 
 console.log('🔧 Using Replit PostgreSQL database...');
 
