@@ -48,11 +48,6 @@ export default function Navigation() {
 
           {/* User Actions */}
           <div className="flex items-center space-x-4">
-            <Link href="/login">
-              <Button className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium">
-                Masuk
-              </Button>
-            </Link>
             
             {/* Mobile Menu Button */}
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -81,14 +76,7 @@ export default function Navigation() {
                       </Link>
                     );
                   })}
-                  <div className="border-t border-gray-200 pt-4 space-y-2">
-                    <Link href="/login" className="w-full" onClick={() => setIsOpen(false)}>
-                      <Button className="w-full justify-start bg-primary hover:bg-primary/90" size="lg">
-                        <User className="w-5 h-5 mr-3" />
-                        Masuk
-                      </Button>
-                    </Link>
-                  </div>
+
                 </div>
               </SheetContent>
             </Sheet>
