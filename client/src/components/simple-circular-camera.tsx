@@ -32,34 +32,50 @@ export function SimpleCircularCamera({
     try {
       console.log('Meminta akses kamera...');
       
+      // Coba dengan constraints yang lebih sederhana dulu
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'user',
-          width: { ideal: 640 },
-          height: { ideal: 480 }
-        } 
+        video: true
       });
       
-      console.log('Kamera berhasil diakses');
+      console.log('Kamera berhasil diakses', stream);
       
-      if (videoRef.current) {
+      if (videoRef.current && stream) {
+        console.log('Setting video source...');
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
         
-        // Tunggu video siap untuk diputar
-        videoRef.current.addEventListener('loadedmetadata', () => {
-          console.log('Video metadata loaded, starting playback');
-          setIsCapturing(true);
-          setCaptureStep('capturing');
-        });
+        // Set capturing state immediately
+        console.log('Setting isCapturing to true...');
+        setIsCapturing(true);
+        setCaptureStep('capturing');
         
-        // Pastikan video diputar
-        videoRef.current.play().catch(err => {
-          console.error('Error playing video:', err);
-          onError("Tidak dapat memulai video kamera.");
-        });
+        // Wait for video to be ready
+        videoRef.current.onloadedmetadata = () => {
+          console.log('Video metadata loaded, attempting to play');
+          if (videoRef.current) {
+            videoRef.current.play()
+              .then(() => {
+                console.log('Video is now playing successfully');
+              })
+              .catch(err => {
+                console.error('Error playing video:', err);
+                onError("Tidak dapat memulai video kamera.");
+              });
+          }
+        };
         
-        console.log('Kamera mulai streaming');
+        // Also try to play immediately
+        try {
+          await videoRef.current.play();
+          console.log('Video playing immediately');
+        } catch (playError) {
+          console.log('Immediate play failed, waiting for metadata:', playError);
+        }
+        
+        console.log('Kamera setup complete, isCapturing should be true');
+      } else {
+        console.error('Video ref or stream is null');
+        onError("Tidak dapat mengatur video element");
       }
     } catch (error: any) {
       console.error('Error kamera:', error);
@@ -155,6 +171,11 @@ export function SimpleCircularCamera({
 
   return (
     <div className={`flex flex-col items-center space-y-4 ${className}`}>
+      {/* Debug info */}
+      <div className="text-xs text-gray-500">
+        Debug: isCapturing={isCapturing.toString()}, step={captureStep}
+      </div>
+      
       {/* Circular Camera View */}
       <div className="relative">
         <div className="w-64 h-64 rounded-full overflow-hidden bg-gray-100 border-4 border-gray-300 shadow-lg">
