@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Button } from '@/components/ui/button';
-import { MapPin, Navigation, Search } from 'lucide-react';
+import { MapPin, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 // Fix untuk ikon marker default Leaflet
@@ -43,9 +43,8 @@ export default function LocationMap({ onLocationSelect, showKosLocations = false
   const [kosLocations, setKosLocations] = useState<KosLocation[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Dapatkan lokasi GPS user
+  // Dapatkan lokasi GPS user secara otomatis
   const getCurrentLocation = () => {
-    setLoading(true);
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -62,24 +61,24 @@ export default function LocationMap({ onLocationSelect, showKosLocations = false
           if (showKosLocations) {
             searchNearbyKos(lat, lng);
           }
-          setLoading(false);
         },
         (error) => {
           console.error('Error getting location:', error);
-          setLoading(false);
-          alert('Tidak dapat mengakses lokasi GPS. Pastikan GPS diaktifkan dan izinkan akses lokasi.');
+          // Jika GPS gagal, gunakan lokasi default tanpa alert
         },
         {
           enableHighAccuracy: true,
-          timeout: 10000,
+          timeout: 5000,
           maximumAge: 60000
         }
       );
-    } else {
-      alert('GPS tidak didukung oleh browser ini.');
-      setLoading(false);
     }
   };
+
+  // Jalankan GPS otomatis saat komponen dimuat
+  useEffect(() => {
+    getCurrentLocation();
+  }, []);
 
   // Reverse geocoding menggunakan Nominatim
   const reverseGeocode = async (lat: number, lng: number) => {
@@ -191,7 +190,7 @@ export default function LocationMap({ onLocationSelect, showKosLocations = false
 
   return (
     <div className="w-full h-full">
-      {/* Kontrol pencarian dan GPS */}
+      {/* Kontrol pencarian */}
       <div className="mb-4 space-y-2">
         <div className="flex gap-2">
           <Input
@@ -208,15 +207,6 @@ export default function LocationMap({ onLocationSelect, showKosLocations = false
             size="sm"
           >
             <Search className="h-4 w-4" />
-          </Button>
-          <Button 
-            onClick={getCurrentLocation} 
-            disabled={loading}
-            variant="outline"
-            size="sm"
-          >
-            <Navigation className="h-4 w-4" />
-            {loading ? 'Mencari...' : 'GPS'}
           </Button>
         </div>
       </div>

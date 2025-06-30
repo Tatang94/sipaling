@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, DollarSign, Search, Navigation } from "lucide-react";
+import { MapPin, DollarSign, Search } from "lucide-react";
 
 export default function HeroSection() {
   const [, setLocation] = useLocation();
@@ -74,8 +74,8 @@ export default function HeroSection() {
                   variant="outline"
                   className="py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center"
                 >
-                  <Navigation className="w-5 h-5 mr-2" />
-                  GPS
+                  <MapPin className="w-5 h-5 mr-2" />
+                  Lokasi
                 </Button>
               </div>
             </div>
