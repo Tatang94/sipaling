@@ -59,6 +59,7 @@ function Router() {
       <Route path="/login" component={LoginPage} />
       <Route path="/dashboard" component={DashboardPage} />
       <Route path="/onboarding" component={OnboardingPage} />
+      <Route path="/splash" component={SplashScreen} />
       <Route path="/bantuan" component={BantuanPage} />
       <Route component={NotFound} />
     </Switch>

@@ -20,10 +20,10 @@ export default function Navigation() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link href="/" className="flex-shrink-0 flex items-center">
+          <Link href="/splash" className="flex-shrink-0 flex items-center">
             <div className="text-2xl font-bold text-primary">
               <Home className="inline w-6 h-6 mr-2" />
-              KosKu
+              SI PALING KOST
             </div>
           </Link>
 
