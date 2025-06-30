@@ -136,6 +136,8 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - June 30, 2025: Changed logo from "KosKu" to "SI PALING KOST" and made it clickable to splash screen
 - June 30, 2025: Set up PostgreSQL database with proper schema and seeded sample data
 - June 30, 2025: Optimized splash screen design with better proportions and 15-second duration
+- June 30, 2025: Replaced Google and Facebook login with WhatsApp verification system
+- June 30, 2025: Added WhatsApp verification modal with 6-digit code authentication
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
