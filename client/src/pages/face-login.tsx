@@ -1,26 +1,29 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Camera, CameraOff, CheckCircle, AlertCircle, Scan } from "lucide-react";
+import { CheckCircle, AlertCircle, Scan } from "lucide-react";
+import { CircularFaceCamera } from "@/components/circular-face-camera";
+import type { FaceDescriptor } from "@/hooks/use-face-api";
 
 export default function FaceLogin() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [isCapturing, setIsCapturing] = useState(false);
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [loginStep, setLoginStep] = useState<'ready' | 'capturing' | 'verifying' | 'success' | 'failed'>('ready');
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const [loginStep, setLoginStep] = useState<'ready' | 'verifying' | 'success' | 'failed'>('ready');
 
   const loginMutation = useMutation({
-    mutationFn: async (faceData: string) => {
-      const response = await apiRequest('POST', '/api/auth/face-login', { faceData });
+    mutationFn: async (faceData: FaceDescriptor) => {
+      // Convert face descriptor to base64 for API
+      const faceDataString = btoa(JSON.stringify({
+        descriptor: Array.from(faceData.descriptor),
+        confidence: faceData.confidence,
+        timestamp: new Date().toISOString(),
+        type: 'login'
+      }));
       
+      const response = await apiRequest('POST', '/api/auth/face-login', { faceData: faceDataString });
       return response.json();
     },
     onSuccess: (data) => {
@@ -53,87 +56,29 @@ export default function FaceLogin() {
     },
   });
 
-  const startCamera = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'user',
-          width: { ideal: 640 },
-          height: { ideal: 480 }
-        } 
-      });
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        streamRef.current = stream;
-        setIsCapturing(true);
-        setLoginStep('capturing');
-      }
-    } catch (error) {
-      toast({
-        title: "Error Kamera",
-        description: "Tidak dapat mengakses kamera. Pastikan izin kamera sudah diberikan.",
-        variant: "destructive"
-      });
-    }
-  }, [toast]);
-
-  const stopCamera = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    setIsCapturing(false);
-    setLoginStep('ready');
-  }, []);
-
-  const captureAndLogin = useCallback(() => {
-    if (videoRef.current && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const video = videoRef.current;
-      const context = canvas.getContext('2d');
-      
-      if (context) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0);
-        
-        const imageData = canvas.toDataURL('image/jpeg', 0.8);
-        setCapturedImage(imageData);
-        stopCamera();
-        setLoginStep('verifying');
-        
-        // Create face data template for verification
-        const faceData = btoa(JSON.stringify({
-          image: imageData,
-          timestamp: new Date().toISOString(),
-          type: 'login'
-        }));
-        
-        loginMutation.mutate(faceData);
-      }
-    }
-  }, [stopCamera, loginMutation]);
-
-  const resetLogin = () => {
-    setCapturedImage(null);
-    setLoginStep('ready');
+  const handleFaceCapture = (faceData: FaceDescriptor) => {
+    setLoginStep('verifying');
+    loginMutation.mutate(faceData);
   };
 
-  useEffect(() => {
-    return () => {
-      stopCamera();
-    };
-  }, [stopCamera]);
+  const handleError = (error: string) => {
+    toast({
+      title: "Error",
+      description: error,
+      variant: "destructive"
+    });
+  };
+
+  const resetLogin = () => {
+    setLoginStep('ready');
+  };
 
   const getStepText = () => {
     switch (loginStep) {
       case 'ready':
-        return "Tekan tombol untuk memulai login dengan wajah";
-      case 'capturing':
-        return "Posisikan wajah Anda di tengah kamera dan tekan tombol foto";
+        return "Gunakan kamera bulat untuk login dengan wajah Anda";
       case 'verifying':
-        return "Memverifikasi wajah Anda...";
+        return "Memverifikasi wajah Anda dengan Face AI...";
       case 'success':
         return "Login berhasil! Mengarahkan ke dashboard...";
       case 'failed':
@@ -145,7 +90,7 @@ export default function FaceLogin() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 to-green-50 p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-lg">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
             <div className={`p-3 rounded-full ${
@@ -167,107 +112,44 @@ export default function FaceLogin() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="relative bg-gray-100 rounded-lg overflow-hidden aspect-[4/3]">
-              {!capturedImage ? (
-                <>
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover"
-                    style={{ display: isCapturing ? 'block' : 'none' }}
-                  />
-                  {!isCapturing && loginStep !== 'verifying' && (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-center">
-                        <Camera className="mx-auto h-16 w-16 text-gray-400" />
-                        <p className="mt-2 text-sm text-gray-500">Kamera siap digunakan</p>
-                      </div>
-                    </div>
-                  )}
-                  {loginStep === 'verifying' && (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-center">
-                        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-teal-600 mx-auto"></div>
-                        <p className="mt-2 text-sm text-gray-500">Memverifikasi...</p>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="relative">
-                  <img
-                    src={capturedImage}
-                    alt="Captured face"
-                    className="w-full h-full object-cover"
-                  />
-                  {loginStep === 'success' && (
-                    <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center">
-                      <CheckCircle className="h-16 w-16 text-green-500" />
-                    </div>
-                  )}
-                  {loginStep === 'failed' && (
-                    <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center">
-                      <AlertCircle className="h-16 w-16 text-red-500" />
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+          <div className="space-y-6">
+            {/* Circular Face Camera */}
+            <CircularFaceCamera
+              mode="login"
+              onCapture={handleFaceCapture}
+              onError={handleError}
+              isProcessing={loginStep === 'verifying'}
+              className="flex justify-center"
+            />
             
-            <canvas ref={canvasRef} className="hidden" />
-            
-            <div className="flex gap-2">
-              {loginStep === 'ready' && (
-                <Button 
-                  onClick={startCamera} 
-                  className="flex-1"
+            {/* Verification Status */}
+            {loginStep === 'verifying' && (
+              <div className="flex items-center justify-center space-x-2">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-600"></div>
+                <span className="text-sm text-gray-600">Memverifikasi dengan Face AI...</span>
+              </div>
+            )}
+
+            {/* Reset Button for Failed Login */}
+            {loginStep === 'failed' && (
+              <div className="flex justify-center">
+                <button 
+                  onClick={resetLogin}
+                  className="text-sm text-teal-600 hover:underline"
                 >
-                  <Camera className="mr-2 h-4 w-4" />
-                  Mulai Login
-                </Button>
-              )}
-              
-              {loginStep === 'capturing' && (
-                <>
-                  <Button 
-                    onClick={captureAndLogin} 
-                    className="flex-1"
-                  >
-                    <Scan className="mr-2 h-4 w-4" />
-                    Ambil Foto & Login
-                  </Button>
-                  <Button 
-                    onClick={stopCamera} 
-                    variant="outline"
-                  >
-                    <CameraOff className="mr-2 h-4 w-4" />
-                    Batal
-                  </Button>
-                </>
-              )}
-              
-              {(loginStep === 'failed' || loginStep === 'success') && (
-                <Button 
-                  onClick={resetLogin} 
-                  variant="outline"
-                  className="flex-1"
-                  disabled={loginStep === 'success'}
-                >
-                  Coba Lagi
-                </Button>
-              )}
-            </div>
+                  Coba lagi dengan wajah berbeda
+                </button>
+              </div>
+            )}
             
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            {/* Info Box */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-center gap-2 text-blue-700">
                 <Scan className="h-4 w-4" />
-                <span className="text-sm font-medium">Login Biometrik</span>
+                <span className="text-sm font-medium">Face AI Recognition</span>
               </div>
               <p className="text-xs text-blue-600 mt-1">
-                Sistem akan mengenali wajah Anda yang telah terdaftar
+                Menggunakan teknologi Face-api.js untuk mengenali wajah Anda secara real-time
               </p>
             </div>
           </div>

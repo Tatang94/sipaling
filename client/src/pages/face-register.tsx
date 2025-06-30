@@ -11,8 +11,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { FaceRegistrationModal } from "@/components/face-registration-modal";
+import { CircularFaceCamera } from "@/components/circular-face-camera";
 import { Camera, UserPlus, Shield } from "lucide-react";
+import type { FaceDescriptor } from "@/hooks/use-face-api";
 
 const registerSchema = z.object({
   name: z.string().min(2, "Nama minimal 2 karakter"),
@@ -43,8 +44,19 @@ export default function FaceRegister() {
   const role = watch("role");
 
   const createAccountMutation = useMutation({
-    mutationFn: async (data: { userData: RegisterForm; faceData: string }) => {
-      const response = await apiRequest('POST', '/api/auth/register-face', data);
+    mutationFn: async (data: { userData: RegisterForm; faceData: FaceDescriptor }) => {
+      // Convert face descriptor to base64 for API
+      const faceDataString = btoa(JSON.stringify({
+        descriptor: Array.from(data.faceData.descriptor),
+        confidence: data.faceData.confidence,
+        timestamp: new Date().toISOString(),
+        type: 'register'
+      }));
+      
+      const response = await apiRequest('POST', '/api/auth/register-face', {
+        userData: data.userData,
+        faceData: faceDataString
+      });
       
       return response.json();
     },
@@ -78,13 +90,21 @@ export default function FaceRegister() {
     setShowFaceRegistration(true);
   };
 
-  const handleFaceRegistration = (faceData: string) => {
+  const handleFaceRegistration = (faceData: FaceDescriptor) => {
     if (registrationData) {
       createAccountMutation.mutate({
         userData: registrationData,
         faceData: faceData
       });
     }
+  };
+
+  const handleError = (error: string) => {
+    toast({
+      title: "Error",
+      description: error,
+      variant: "destructive"
+    });
   };
 
   return (
@@ -190,16 +210,43 @@ export default function FaceRegister() {
         </CardContent>
       </Card>
 
-      {/* Face Registration Modal */}
-      <FaceRegistrationModal
-        isOpen={showFaceRegistration}
-        onClose={() => {
-          setShowFaceRegistration(false);
-          setRegistrationData(null);
-        }}
-        onFaceRegistered={handleFaceRegistration}
-        userName={registrationData?.name || ''}
-      />
+      {/* Face Registration Screen */}
+      {showFaceRegistration && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-lg">
+            <CardHeader>
+              <CardTitle className="text-center">
+                Registrasi Wajah untuk {registrationData?.name}
+              </CardTitle>
+              <CardDescription className="text-center">
+                Gunakan kamera bulat untuk mendaftarkan wajah Anda
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CircularFaceCamera
+                mode="register"
+                onCapture={handleFaceRegistration}
+                onError={handleError}
+                isProcessing={createAccountMutation.isPending}
+                className="flex justify-center"
+              />
+              
+              <div className="mt-6 flex justify-center">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowFaceRegistration(false);
+                    setRegistrationData(null);
+                  }}
+                  disabled={createAccountMutation.isPending}
+                >
+                  Batal
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
