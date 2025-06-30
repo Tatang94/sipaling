@@ -45,14 +45,33 @@ export function SimpleCircularCamera({
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
-        setIsCapturing(true);
-        setCaptureStep('capturing');
+        
+        // Tunggu video siap untuk diputar
+        videoRef.current.addEventListener('loadedmetadata', () => {
+          console.log('Video metadata loaded, starting playback');
+          setIsCapturing(true);
+          setCaptureStep('capturing');
+        });
+        
+        // Pastikan video diputar
+        videoRef.current.play().catch(err => {
+          console.error('Error playing video:', err);
+          onError("Tidak dapat memulai video kamera.");
+        });
         
         console.log('Kamera mulai streaming');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error kamera:', error);
-      onError("Tidak dapat mengakses kamera. Pastikan izin kamera sudah diberikan dan browser mendukung kamera.");
+      let errorMessage = "Tidak dapat mengakses kamera. ";
+      if (error && error.name === 'NotAllowedError') {
+        errorMessage += "Izin kamera ditolak. Silakan beri izin kamera di browser Anda.";
+      } else if (error && error.name === 'NotFoundError') {
+        errorMessage += "Kamera tidak ditemukan. Pastikan perangkat memiliki kamera.";
+      } else {
+        errorMessage += "Pastikan izin kamera sudah diberikan dan browser mendukung kamera.";
+      }
+      onError(errorMessage);
     }
   }, [onError]);
 
@@ -146,6 +165,9 @@ export function SimpleCircularCamera({
               playsInline
               muted
               className="w-full h-full object-cover"
+              onLoadedMetadata={() => console.log('Video loaded and ready')}
+              onError={(e) => console.error('Video error:', e)}
+              onCanPlay={() => console.log('Video can play')}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
