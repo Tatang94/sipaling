@@ -2,7 +2,7 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertBookingSchema, insertRoomSchema } from "@shared/schema";
+import { insertUserSchema, insertBookingSchema, insertRoomSchema, insertKosSchema } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -109,6 +109,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get kos by owner
+  app.get("/api/kos/owner/:ownerId", async (req, res) => {
+    try {
+      const ownerId = parseInt(req.params.ownerId);
+      if (isNaN(ownerId)) {
+        return res.status(400).json({ message: "Invalid owner ID" });
+      }
+      
+      const kos = await storage.getKosByOwner(ownerId);
+      res.json(kos);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch owner's kos" });
+    }
+  });
+
   // Get kos by city
   app.get("/api/kos/city/:city", async (req, res) => {
     try {
@@ -117,6 +132,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(kos);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch kos by city" });
+    }
+  });
+
+  // Create new kos
+  app.post("/api/kos", async (req, res) => {
+    try {
+      const validatedData = insertKosSchema.parse(req.body);
+      const kos = await storage.createKos(validatedData);
+      res.status(201).json(kos);
+    } catch (error) {
+      console.error("Create kos error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid kos data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create kos", error: error.message });
+    }
+  });
+
+  // Update kos
+  app.put("/api/kos/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid kos ID" });
+      }
+
+      const validatedData = insertKosSchema.partial().parse(req.body);
+      const kos = await storage.updateKos(id, validatedData);
+      
+      if (!kos) {
+        return res.status(404).json({ message: "Kos not found" });
+      }
+      
+      res.json(kos);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid kos data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update kos" });
+    }
+  });
+
+  // Delete kos
+  app.delete("/api/kos/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid kos ID" });
+      }
+
+      const success = await storage.deleteKos(id);
+      if (!success) {
+        return res.status(404).json({ message: "Kos not found" });
+      }
+      
+      res.json({ message: "Kos deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete kos" });
     }
   });
 
