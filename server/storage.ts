@@ -1111,4 +1111,5 @@ export class MemStorage implements IStorage {
 }
 
 // Use MemStorage - Switched to working memory storage for optimal performance
-export const storage = new MemStorage();
+// Use DatabaseStorage if DATABASE_URL is available, otherwise fallback to MemStorage
+export const storage = process.env.DATABASE_URL ? new DatabaseStorage() : new MemStorage();
