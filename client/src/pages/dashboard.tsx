@@ -1,10 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   Home, 
   Building2, 
@@ -23,6 +28,8 @@ import { formatPrice } from "@/lib/utils";
 export default function DashboardPage() {
   const [, setLocation] = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAddRoomOpen, setIsAddRoomOpen] = useState(false);
+  const [rooms, setRooms] = useState<any[]>([]);
   
   // Get current user from localStorage
   const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
@@ -30,11 +37,75 @@ export default function DashboardPage() {
   // Get user bookings from localStorage for pencari kos
   const userBookings = JSON.parse(localStorage.getItem("userBookings") || "[]");
 
+  // Form state for adding new room
+  const [newRoom, setNewRoom] = useState({
+    number: "",
+    kosName: "",
+    type: "",
+    price: "",
+    facilities: "",
+    description: "",
+    size: ""
+  });
+
   const handleLogout = () => {
     localStorage.removeItem("user");
     localStorage.removeItem("userBookings");
     setLocation("/");
   };
+
+  // Handle adding new room
+  const handleAddRoom = () => {
+    if (!newRoom.number || !newRoom.kosName || !newRoom.price) {
+      alert("Mohon lengkapi data kamar");
+      return;
+    }
+
+    const roomData = {
+      id: Date.now(),
+      number: newRoom.number,
+      kosName: newRoom.kosName,
+      type: newRoom.type || "Standard",
+      price: parseInt(newRoom.price),
+      facilities: newRoom.facilities.split(",").map(f => f.trim()),
+      description: newRoom.description,
+      size: newRoom.size || "3x4 meter",
+      isOccupied: false,
+      tenantName: null,
+      status: "available"
+    };
+
+    // Save to localStorage (in real app would save to database)
+    const existingRooms = JSON.parse(localStorage.getItem("ownerRooms") || "[]");
+    existingRooms.push(roomData);
+    localStorage.setItem("ownerRooms", JSON.stringify(existingRooms));
+    setRooms(existingRooms);
+
+    // Reset form
+    setNewRoom({
+      number: "",
+      kosName: "",
+      type: "",
+      price: "",
+      facilities: "",
+      description: "",
+      size: ""
+    });
+
+    setIsAddRoomOpen(false);
+    alert("Kamar berhasil ditambahkan!");
+  };
+
+  // Load rooms from localStorage
+  const loadRooms = () => {
+    const savedRooms = JSON.parse(localStorage.getItem("ownerRooms") || "[]");
+    setRooms(savedRooms);
+  };
+
+  // Load rooms on component mount
+  useEffect(() => {
+    loadRooms();
+  }, []);
 
   // Simple stats for pemilik kos
   const stats = {
@@ -302,6 +373,70 @@ export default function DashboardPage() {
           </Card>
         </div>
 
+        {/* Mobile Add Room Button */}
+        <div className="md:hidden mb-4">
+          <Dialog open={isAddRoomOpen} onOpenChange={setIsAddRoomOpen}>
+            <DialogTrigger asChild>
+              <Button className="w-full">
+                <Plus className="w-4 h-4 mr-2" />
+                Tambah Kamar Baru
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Tambah Kamar Baru</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor="number">Nomor Kamar *</Label>
+                  <Input
+                    id="number"
+                    value={newRoom.number}
+                    onChange={(e) => setNewRoom({...newRoom, number: e.target.value})}
+                    placeholder="A-101"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="kosName">Nama Kos *</Label>
+                  <Input
+                    id="kosName"
+                    value={newRoom.kosName}
+                    onChange={(e) => setNewRoom({...newRoom, kosName: e.target.value})}
+                    placeholder="Kos Melati"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="price">Harga per Bulan *</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    value={newRoom.price}
+                    onChange={(e) => setNewRoom({...newRoom, price: e.target.value})}
+                    placeholder="2500000"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="facilities">Fasilitas (pisahkan dengan koma)</Label>
+                  <Input
+                    id="facilities"
+                    value={newRoom.facilities}
+                    onChange={(e) => setNewRoom({...newRoom, facilities: e.target.value})}
+                    placeholder="WiFi, AC, Kamar Mandi Dalam"
+                  />
+                </div>
+                <div className="flex space-x-2 pt-2">
+                  <Button onClick={handleAddRoom} className="flex-1">
+                    Tambah
+                  </Button>
+                  <Button variant="outline" onClick={() => setIsAddRoomOpen(false)} className="flex-1">
+                    Batal
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+
         {/* Rooms Management */}
         <Card>
           <CardHeader>
@@ -310,50 +445,145 @@ export default function DashboardPage() {
                 <Building2 className="w-5 h-5 mr-2" />
                 Manajemen Kamar
               </CardTitle>
-              <Button size="sm" className="hidden md:flex">
-                <Plus className="w-4 h-4 mr-1" />
-                Tambah Kamar
-              </Button>
+              <Dialog open={isAddRoomOpen} onOpenChange={setIsAddRoomOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="hidden md:flex">
+                    <Plus className="w-4 h-4 mr-1" />
+                    Tambah Kamar
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Tambah Kamar Baru</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="number">Nomor Kamar *</Label>
+                      <Input
+                        id="number"
+                        value={newRoom.number}
+                        onChange={(e) => setNewRoom({...newRoom, number: e.target.value})}
+                        placeholder="A-101"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="kosName">Nama Kos *</Label>
+                      <Input
+                        id="kosName"
+                        value={newRoom.kosName}
+                        onChange={(e) => setNewRoom({...newRoom, kosName: e.target.value})}
+                        placeholder="Kos Melati"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="type">Tipe Kamar</Label>
+                      <Select value={newRoom.type} onValueChange={(value) => setNewRoom({...newRoom, type: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih tipe" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Standard">Standard</SelectItem>
+                          <SelectItem value="Deluxe">Deluxe</SelectItem>
+                          <SelectItem value="Premium">Premium</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="price">Harga per Bulan *</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        value={newRoom.price}
+                        onChange={(e) => setNewRoom({...newRoom, price: e.target.value})}
+                        placeholder="2500000"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="size">Ukuran Kamar</Label>
+                      <Input
+                        id="size"
+                        value={newRoom.size}
+                        onChange={(e) => setNewRoom({...newRoom, size: e.target.value})}
+                        placeholder="3x4 meter"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="facilities">Fasilitas (pisahkan dengan koma)</Label>
+                      <Input
+                        id="facilities"
+                        value={newRoom.facilities}
+                        onChange={(e) => setNewRoom({...newRoom, facilities: e.target.value})}
+                        placeholder="WiFi, AC, Kamar Mandi Dalam"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="description">Deskripsi</Label>
+                      <Textarea
+                        id="description"
+                        value={newRoom.description}
+                        onChange={(e) => setNewRoom({...newRoom, description: e.target.value})}
+                        placeholder="Deskripsi kamar..."
+                      />
+                    </div>
+                    <div className="flex space-x-2 pt-4">
+                      <Button onClick={handleAddRoom} className="flex-1">
+                        Tambah Kamar
+                      </Button>
+                      <Button variant="outline" onClick={() => setIsAddRoomOpen(false)} className="flex-1">
+                        Batal
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {mockRooms.map((room) => (
-                <div key={room.id} className="border rounded-lg p-4">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <h3 className="font-semibold">{room.number}</h3>
-                        <Badge variant={room.isOccupied ? "default" : "secondary"}>
-                          {room.isOccupied ? "Terisi" : "Kosong"}
-                        </Badge>
-                        {room.status === "pending" && (
-                          <Badge variant="destructive">Pending Payment</Badge>
+              {rooms.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Building2 className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                  <p>Belum ada kamar yang ditambahkan</p>
+                  <p className="text-sm">Klik tombol "Tambah Kamar" untuk memulai</p>
+                </div>
+              ) : (
+                rooms.map((room) => (
+                  <div key={room.id} className="border rounded-lg p-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <h3 className="font-semibold">{room.number}</h3>
+                          <Badge variant={room.isOccupied ? "default" : "secondary"}>
+                            {room.isOccupied ? "Terisi" : "Kosong"}
+                          </Badge>
+                          {room.status === "pending" && (
+                            <Badge variant="destructive">Pending Payment</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600">{room.kosName}</p>
+                        {room.tenantName && (
+                          <p className="text-sm text-gray-600">Penghuni: {room.tenantName}</p>
+                        )}
+                        <p className="text-lg font-bold text-primary mt-1">
+                          {formatPrice(room.price)}/bulan
+                        </p>
+                      </div>
+                      <div className="mt-4 md:mt-0 md:ml-4 flex space-x-2">
+                        <Button variant="outline" size="sm">
+                          <Eye className="w-4 h-4 mr-1" />
+                          Detail
+                        </Button>
+                        {room.tenantName && (
+                          <Button variant="outline" size="sm">
+                            <Phone className="w-4 h-4 mr-1" />
+                            Kontak
+                          </Button>
                         )}
                       </div>
-                      <p className="text-sm text-gray-600">{room.kosName}</p>
-                      {room.tenantName && (
-                        <p className="text-sm text-gray-600">Penghuni: {room.tenantName}</p>
-                      )}
-                      <p className="text-lg font-bold text-primary mt-1">
-                        {formatPrice(room.price)}/bulan
-                      </p>
-                    </div>
-                    <div className="mt-4 md:mt-0 md:ml-4 flex space-x-2">
-                      <Button variant="outline" size="sm">
-                        <Eye className="w-4 h-4 mr-1" />
-                        Detail
-                      </Button>
-                      {room.tenantName && (
-                        <Button variant="outline" size="sm">
-                          <Phone className="w-4 h-4 mr-1" />
-                          Kontak
-                        </Button>
-                      )}
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
