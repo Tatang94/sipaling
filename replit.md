@@ -135,7 +135,7 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - June 30, 2025: Fixed routing to show home page instead of dashboard on root path
 - June 30, 2025: Changed logo from "KosKu" to "SI PALING KOST" and made it clickable to splash screen
 - June 30, 2025: Set up PostgreSQL database with proper schema and seeded sample data
-- June 30, 2025: Optimized splash screen design with better proportions and 30-second duration
+- June 30, 2025: Optimized splash screen design with better proportions and 15-second duration
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

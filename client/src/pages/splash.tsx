@@ -15,7 +15,7 @@ export default function SplashScreen() {
           setTimeout(() => setLocation("/"), 500);
           return 100;
         }
-        return prev + 0.33;
+        return prev + 0.67;
       });
     }, 100);
 
