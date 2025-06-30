@@ -54,15 +54,33 @@ export function RegularCamera({
       video.srcObject = stream;
       streamRef.current = stream;
       
+      console.log('Setting state: isCapturing=true, step=capturing');
       setIsCapturing(true);
       setCaptureStep('capturing');
       
+      // Force a re-render after state change
+      setTimeout(() => {
+        console.log('Force update: setting state again');
+        setIsCapturing(true);
+        setCaptureStep('capturing');
+      }, 100);
+      
       video.onloadedmetadata = () => {
         console.log('Video metadata loaded');
-        video.play().catch(err => {
-          console.error('Error playing video:', err);
-          onError("Tidak dapat memulai video kamera.");
-        });
+        console.log('Final state check: setting isCapturing=true again');
+        setIsCapturing(true);
+        setCaptureStep('capturing');
+        
+        video.play()
+          .then(() => {
+            console.log('Video playing successfully');
+            setIsCapturing(true);
+            setCaptureStep('capturing');
+          })
+          .catch(err => {
+            console.error('Error playing video:', err);
+            onError("Tidak dapat memulai video kamera.");
+          });
       };
       
     } catch (error: any) {
