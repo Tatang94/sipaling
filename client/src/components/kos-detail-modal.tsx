@@ -54,20 +54,29 @@ export default function KosDetailModal({ kos, isOpen, onClose, onBook }: KosDeta
   };
 
   const handleBook = () => {
-    // Check if user is logged in (simple check for demo)
-    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+    // Check if user is logged in
+    const user = localStorage.getItem("user");
     
-    if (!isLoggedIn) {
+    if (!user) {
       toast({
         title: "Login Diperlukan",
         description: "Silakan login terlebih dahulu untuk melakukan booking",
+        variant: "destructive",
       });
       onClose();
       setLocation("/login");
       return;
     }
 
-    // Create booking data
+    // Get user data
+    const userData = JSON.parse(user);
+    
+    // Create payment for this booking
+    const paymentId = Math.floor(Math.random() * 1000) + 100;
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 7); // Due in 7 days
+    
+    // Create booking data with payment
     const bookingData = {
       id: Date.now(),
       kosId: kos.id,
@@ -77,24 +86,26 @@ export default function KosDetailModal({ kos, isOpen, onClose, onBook }: KosDeta
       address: kos.address,
       pricePerMonth: kos.pricePerMonth,
       bookingDate: new Date().toISOString().split('T')[0],
+      paymentId: paymentId,
+      paymentStatus: 'pending'
     };
 
-    // Save to localStorage for now (in real app, would save to database)
+    // Save booking to localStorage
     const existingBookings = JSON.parse(localStorage.getItem("userBookings") || "[]");
     existingBookings.push(bookingData);
     localStorage.setItem("userBookings", JSON.stringify(existingBookings));
 
     toast({
       title: "Booking Berhasil!",
-      description: `Booking untuk ${kos.name} telah dikonfirmasi. Hubungi pemilik di ${kos.ownerPhone}`,
+      description: `Silakan lakukan pembayaran untuk menyelesaikan booking`,
     });
 
     onClose();
     
-    // Redirect to dashboard after successful booking
+    // Redirect to payment page
     setTimeout(() => {
-      setLocation("/dashboard");
-    }, 2000);
+      setLocation(`/payment?id=${paymentId}`);
+    }, 1500);
   };
 
   const getFacilityIcon = (facility: string) => {

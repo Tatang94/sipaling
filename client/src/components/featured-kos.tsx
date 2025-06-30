@@ -87,11 +87,10 @@ export default function FeaturedKos() {
   ];
 
   const handleBook = (kos: Kos) => {
-    // Check if user is logged in (support both user data formats)
+    // Check if user is logged in
     const user = localStorage.getItem("user");
-    const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
     
-    if (!user && !hasSeenOnboarding) {
+    if (!user) {
       toast({
         title: "Login Diperlukan",
         description: "Silakan login terlebih dahulu untuk melakukan booking",
@@ -103,8 +102,8 @@ export default function FeaturedKos() {
       return;
     }
 
-    // Create booking and payment data
-    const userData = user ? JSON.parse(user) : { id: 999, name: "Pencari Kos", role: "pencari" };
+    // Get user data
+    const userData = JSON.parse(user);
     
     // Create sample payment for this booking
     const paymentId = Math.floor(Math.random() * 1000) + 100;
