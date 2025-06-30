@@ -1,6 +1,7 @@
 import { users, kos, bookings, rooms, payments, type User, type Kos, type InsertUser, type InsertKos, type Booking, type InsertBooking, type Room, type InsertRoom, type Payment, type InsertPayment } from "@shared/schema";
 import { eq, like, and, gte, lte, or, ilike } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+import { db } from "./db";
 
 export interface IStorage {
   // User operations
@@ -47,7 +48,6 @@ export class DatabaseStorage implements IStorage {
   private db: any;
   
   constructor() {
-    const { db } = require("./db");
     this.db = db;
   }
   
@@ -136,7 +136,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createKos(insertKos: InsertKos): Promise<Kos> {
-    const [newKos] = await db
+    const [newKos] = await this.db
       .insert(kos)
       .values(insertKos)
       .returning();
@@ -144,7 +144,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateKos(id: number, updateData: Partial<InsertKos>): Promise<Kos | undefined> {
-    const [updatedKos] = await db
+    const [updatedKos] = await this.db
       .update(kos)
       .set(updateData)
       .where(eq(kos.id, id))
@@ -158,7 +158,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBooking(insertBooking: InsertBooking): Promise<Booking> {
-    const [newBooking] = await db
+    const [newBooking] = await this.db
       .insert(bookings)
       .values(insertBooking)
       .returning();
@@ -184,7 +184,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateBookingStatus(id: number, status: string): Promise<Booking | undefined> {
-    const [updatedBooking] = await db
+    const [updatedBooking] = await this.db
       .update(bookings)
       .set({ status })
       .where(eq(bookings.id, id))
@@ -194,7 +194,7 @@ export class DatabaseStorage implements IStorage {
 
   // Room operations
   async createRoom(insertRoom: InsertRoom): Promise<Room> {
-    const [newRoom] = await db
+    const [newRoom] = await this.db
       .insert(rooms)
       .values(insertRoom)
       .returning();
@@ -206,7 +206,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateRoom(id: number, updateData: Partial<InsertRoom>): Promise<Room | undefined> {
-    const [updatedRoom] = await db
+    const [updatedRoom] = await this.db
       .update(rooms)
       .set(updateData)
       .where(eq(rooms.id, id))
@@ -789,5 +789,5 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Use MemStorage with proper sample data for development
-export const storage = new MemStorage();
+// Use DatabaseStorage for production with PostgreSQL
+export const storage = new DatabaseStorage();

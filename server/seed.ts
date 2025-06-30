@@ -153,21 +153,21 @@ const sampleKosData: InsertKos[] = [
 
 const sampleUsers: InsertUser[] = [
   {
-    fullName: "Budi Santoso",
+    name: "Budi Santoso",
     email: "pemilik@kosku.com",
     password: "password123",
     role: "pemilik",
     phone: "+62 812 3456 7890"
   },
   {
-    fullName: "Siti Nurhaliza",
+    name: "Siti Nurhaliza",
     email: "siti@email.com",
     password: "password123",
     role: "pencari",
     phone: "+62 813 4567 8901"
   },
   {
-    fullName: "Ahmad Rifai",
+    name: "Ahmad Rifai",
     email: "ahmad@email.com",
     password: "password123",
     role: "pencari",
