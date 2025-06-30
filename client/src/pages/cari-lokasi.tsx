@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'wouter';
+import { useQuery } from '@tanstack/react-query';
 import LocationMap from '@/components/location-map';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,42 +18,50 @@ export default function CariLokasiPage() {
     setSelectedLocation({ lat, lng, address });
   };
 
-  // Data kos simulasi berdasarkan lokasi
-  const nearbyKos = [
-    {
-      id: 1,
-      name: "Kos Putri Menteng Executive",
-      type: "Khusus Putri",
-      price: 1500000,
-      distance: "0.5 km",
-      rating: 4.8,
-      facilities: ["WiFi", "AC", "Kamar Mandi Dalam", "Parkir", "Dapur"],
-      image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400&h=300&fit=crop",
-      address: "Jl. Menteng Raya No. 45"
-    },
-    {
-      id: 2,
-      name: "Kos Executive Sudirman",
-      type: "Campuran",
-      price: 2500000,
-      distance: "0.8 km",
-      rating: 4.9,
-      facilities: ["WiFi", "AC", "Kamar Mandi Dalam", "Parkir", "Laundry"],
-      image: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400&h=300&fit=crop",
-      address: "Jl. Sudirman No. 123"
-    },
-    {
-      id: 3,
-      name: "Kos Putra Kemang",
-      type: "Khusus Putra", 
-      price: 1800000,
-      distance: "1.2 km",
-      rating: 4.7,
-      facilities: ["WiFi", "AC", "Kamar Mandi Dalam", "Dapur Bersama"],
-      image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400&h=300&fit=crop",
-      address: "Jl. Kemang Raya No. 78"
+  // Fetch kos data from database
+  const { data: kosData = [], isLoading } = useQuery({
+    queryKey: ['/api/kos/featured'],
+    enabled: true
+  });
+
+  // Calculate distance and create nearby kos data
+  const [nearbyKos, setNearbyKos] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (selectedLocation && kosData.length > 0) {
+      // Calculate distance from selected location to each kos
+      const kosWithDistance = kosData.map((kos: any) => {
+        const distance = calculateDistance(
+          selectedLocation.lat,
+          selectedLocation.lng,
+          parseFloat(kos.latitude || '0'),
+          parseFloat(kos.longitude || '0')
+        );
+        
+        return {
+          ...kos,
+          distance: `${distance.toFixed(1)} km`
+        };
+      }).sort((a: any, b: any) => a.distance - b.distance).slice(0, 5);
+      
+      setNearbyKos(kosWithDistance);
+    } else if (kosData.length > 0) {
+      // Show featured kos if no location selected
+      setNearbyKos(kosData.slice(0, 5));
     }
-  ];
+  }, [selectedLocation, kosData]);
+
+  // Helper function to calculate distance between two points
+  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
 
   const getFacilityIcon = (facility: string) => {
     switch (facility) {
@@ -137,11 +146,20 @@ export default function CariLokasiPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {nearbyKos.map((kos) => (
+                  {isLoading ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">Memuat data kos...</p>
+                    </div>
+                  ) : nearbyKos.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">Belum ada data kos tersedia</p>
+                    </div>
+                  ) : 
+                    nearbyKos.map((kos) => (
                     <div key={kos.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                       <div className="flex gap-4">
                         <img 
-                          src={kos.image} 
+                          src={kos.images?.[0] || "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400&h=300&fit=crop"} 
                           alt={kos.name}
                           className="w-20 h-20 object-cover rounded-lg"
                         />
@@ -160,7 +178,7 @@ export default function CariLokasiPage() {
                             </div>
                             <div className="text-right">
                               <p className="font-bold text-green-600 text-sm">
-                                Rp {kos.price.toLocaleString('id-ID')}
+                                Rp {parseFloat(kos.pricePerMonth || '0').toLocaleString('id-ID')}
                               </p>
                               <p className="text-xs text-gray-500">/bulan</p>
                             </div>
@@ -181,17 +199,36 @@ export default function CariLokasiPage() {
                           </div>
                           
                           <div className="flex gap-2 mt-3">
-                            <Button size="sm" className="flex-1">
+                            <Button 
+                              size="sm" 
+                              className="flex-1"
+                              onClick={() => {
+                                // Contact via WhatsApp for details
+                                const phone = kos.ownerPhone?.replace(/[^0-9]/g, '') || '';
+                                const message = encodeURIComponent(`Halo, saya tertarik dengan kos ${kos.name}. Bisa minta info detail dan jadwal kunjungan?`);
+                                window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+                              }}
+                            >
                               Lihat Detail
                             </Button>
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => {
+                                // Contact via WhatsApp
+                                const phone = kos.ownerPhone?.replace(/[^0-9]/g, '') || '';
+                                const message = encodeURIComponent(`Halo, saya tertarik dengan kos ${kos.name} di ${kos.address}. Bisa diskusi lebih lanjut?`);
+                                window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+                              }}
+                            >
                               Kontak
                             </Button>
                           </div>
                         </div>
                       </div>
                     </div>
-                  ))}
+                  ))
+                  }
                 </div>
               </CardContent>
             </Card>

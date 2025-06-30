@@ -133,41 +133,53 @@ export default function LocationMap({ onLocationSelect, showKosLocations = false
     setLoading(false);
   };
 
-  // Cari kos terdekat (simulasi data - nanti bisa diintegrasikan dengan API)
+  // Cari kos terdekat dari database API
   const searchNearbyKos = async (lat: number, lng: number) => {
     try {
-      // Simulasi data kos terdekat
-      const mockKosData: KosLocation[] = [
-        {
-          id: 1,
-          name: "Kos Putri Menteng",
-          latitude: lat + 0.01,
-          longitude: lng + 0.01,
-          price: 1500000,
-          type: "Putri"
-        },
-        {
-          id: 2,
-          name: "Kos Executive Sudirman",
-          latitude: lat - 0.008,
-          longitude: lng + 0.015,
-          price: 2500000,
-          type: "Campuran"
-        },
-        {
-          id: 3,
-          name: "Kos Putra Kemang",
-          latitude: lat + 0.015,
-          longitude: lng - 0.01,
-          price: 1800000,
-          type: "Putra"
-        }
-      ];
+      // Fetch real kos data from database
+      const response = await fetch('/api/kos/featured');
+      const kosData = await response.json();
       
-      setKosLocations(mockKosData);
+      if (kosData && Array.isArray(kosData)) {
+        // Filter and calculate distance for nearby kos
+        const nearbyKos = kosData
+          .filter((kos: any) => kos.latitude && kos.longitude)
+          .map((kos: any) => {
+            const kosLat = parseFloat(kos.latitude);
+            const kosLng = parseFloat(kos.longitude);
+            const distance = calculateDistance(lat, lng, kosLat, kosLng);
+            
+            return {
+              id: kos.id,
+              name: kos.name,
+              latitude: kosLat,
+              longitude: kosLng,
+              price: parseFloat(kos.pricePerMonth || '0'),
+              type: kos.type,
+              distance
+            };
+          })
+          .filter((kos: any) => kos.distance <= 5) // Within 5km radius
+          .sort((a: any, b: any) => a.distance - b.distance)
+          .slice(0, 10); // Show top 10 nearest
+
+        setKosLocations(nearbyKos);
+      }
     } catch (error) {
       console.error('Error fetching nearby kos:', error);
     }
+  };
+
+  // Helper function to calculate distance between two points  
+  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
   };
 
   // Load kos terdekat saat pertama kali render jika showKosLocations true
