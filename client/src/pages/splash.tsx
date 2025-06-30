@@ -12,12 +12,12 @@ export default function SplashScreen() {
       setProgress((prev) => {
         if (prev >= 100) {
           clearInterval(timer);
-          setTimeout(() => setLocation("/"), 300);
+          setTimeout(() => setLocation("/"), 500);
           return 100;
         }
-        return prev + 4;
+        return prev + 0.33;
       });
-    }, 40);
+    }, 100);
 
     return () => clearInterval(timer);
   }, [setLocation]);
