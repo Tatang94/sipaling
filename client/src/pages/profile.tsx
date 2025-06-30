@@ -405,8 +405,8 @@ export default function ProfilePage() {
                   )}
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex justify-end space-x-3 pt-4 border-t">
+                {/* Action Buttons - Hidden on mobile when editing */}
+                <div className="hidden md:flex justify-end space-x-3 pt-4 border-t">
                   <Button
                     type="button"
                     variant="outline"
