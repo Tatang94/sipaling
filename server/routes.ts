@@ -470,6 +470,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Payment routes
+  app.get("/api/payments", async (req, res) => {
+    try {
+      // For demo purposes, get all payments (in production you'd filter by user)
+      const allPayments = await storage.getPaymentsByOwner(2); // Default owner ID from database
+      res.json(allPayments);
+    } catch (error) {
+      console.error("Error fetching all payments:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/payments/owner/:ownerId", async (req, res) => {
     try {
       const ownerId = parseInt(req.params.ownerId);
