@@ -81,9 +81,10 @@ export const payments = pgTable("payments", {
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   dueDate: timestamp("due_date").notNull(),
   paidDate: timestamp("paid_date"),
-  status: text("status").notNull().default("pending"), // "pending", "paid", "overdue"
+  status: text("status").notNull().default("pending"), // "pending", "paid", "overdue", "processing"
   paymentMethod: text("payment_method"), // "transfer", "cash", "ewallet", etc
   notes: text("notes"),
+  proofImagePath: text("proof_image_path"),
   ownerId: integer("owner_id").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

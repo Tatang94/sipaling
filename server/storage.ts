@@ -36,9 +36,10 @@ export interface IStorage {
   
   // Payment operations
   createPayment(payment: InsertPayment): Promise<Payment>;
+  getPaymentById(id: number): Promise<Payment | undefined>;
   getPaymentsByOwner(ownerId: number): Promise<Payment[]>;
   getPaymentsByBooking(bookingId: number): Promise<Payment[]>;
-  updatePaymentStatus(id: number, status: string, paidDate?: Date, paymentMethod?: string): Promise<Payment | undefined>;
+  updatePaymentStatus(id: number, status: string, paidDate?: Date, paymentMethod?: string, notes?: string, proofImagePath?: string): Promise<Payment | undefined>;
   getOverduePayments(ownerId: number): Promise<Payment[]>;
 }
 
@@ -233,6 +234,11 @@ export class DatabaseStorage implements IStorage {
     return payment;
   }
 
+  async getPaymentById(id: number): Promise<Payment | undefined> {
+    const [payment] = await this.db.select().from(payments).where(eq(payments.id, id));
+    return payment || undefined;
+  }
+
   async getPaymentsByOwner(ownerId: number): Promise<Payment[]> {
     return await this.db.select()
       .from(payments)
@@ -247,10 +253,11 @@ export class DatabaseStorage implements IStorage {
       .orderBy(payments.dueDate);
   }
 
-  async updatePaymentStatus(id: number, status: string, paidDate?: Date, paymentMethod?: string): Promise<Payment | undefined> {
+  async updatePaymentStatus(id: number, status: string, paidDate?: Date, paymentMethod?: string, notes?: string, proofImagePath?: string): Promise<Payment | undefined> {
     const updateData: any = { status };
     if (paidDate) updateData.paidDate = paidDate;
     if (paymentMethod) updateData.paymentMethod = paymentMethod;
+    if (notes) updateData.notes = notes;
 
     const [updatedPayment] = await this.db.update(payments)
       .set(updateData)
@@ -486,6 +493,58 @@ export class MemStorage implements IStorage {
     sampleKos.forEach(kosData => {
       this.createKos(kosData);
     });
+
+    // Create sample payments
+    const samplePayments = [
+      {
+        bookingId: 1,
+        tenantName: "Andi Pratama",
+        roomNumber: "A101",
+        kosName: "Kos Melati Hijau",
+        amount: "1200000",
+        dueDate: new Date(2025, 0, 15), // January 15, 2025
+        status: "pending" as const,
+        ownerId: 1,
+      },
+      {
+        bookingId: 2,
+        tenantName: "Sari Wulandari",
+        roomNumber: "B205",
+        kosName: "Kos Executive Plaza",
+        amount: "2500000",
+        dueDate: new Date(2025, 0, 10), // January 10, 2025
+        status: "paid" as const,
+        paidDate: new Date(2025, 0, 8),
+        paymentMethod: "transfer",
+        ownerId: 1,
+      },
+      {
+        bookingId: 3,
+        tenantName: "Budi Santoso",
+        roomNumber: "C301",
+        kosName: "Kos Putri Aman",
+        amount: "1800000",
+        dueDate: new Date(2024, 11, 30), // December 30, 2024 (overdue)
+        status: "pending" as const,
+        ownerId: 2,
+      },
+      {
+        bookingId: 4,
+        tenantName: "Maya Sari",
+        roomNumber: "D104",
+        kosName: "Kos Kampus Center",
+        amount: "650000",
+        dueDate: new Date(2025, 0, 20), // January 20, 2025
+        status: "processing" as const,
+        paymentMethod: "e-wallet",
+        notes: "Menunggu verifikasi transfer GoPay",
+        ownerId: 3,
+      }
+    ];
+
+    samplePayments.forEach(paymentData => {
+      this.createPayment(paymentData);
+    });
   }
 
   async getKos(id: number): Promise<Kos | undefined> {
@@ -682,12 +741,17 @@ export class MemStorage implements IStorage {
       status: insertPayment.status || "pending",
       paymentMethod: insertPayment.paymentMethod || null,
       notes: insertPayment.notes || null,
+      proofImagePath: insertPayment.proofImagePath || null,
       ownerId: insertPayment.ownerId,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
     this.paymentsList.set(payment.id, payment);
     return payment;
+  }
+
+  async getPaymentById(id: number): Promise<Payment | undefined> {
+    return this.paymentsList.get(id);
   }
 
   async getPaymentsByOwner(ownerId: number): Promise<Payment[]> {
@@ -702,7 +766,7 @@ export class MemStorage implements IStorage {
       .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
   }
 
-  async updatePaymentStatus(id: number, status: string, paidDate?: Date, paymentMethod?: string): Promise<Payment | undefined> {
+  async updatePaymentStatus(id: number, status: string, paidDate?: Date, paymentMethod?: string, notes?: string, proofImagePath?: string): Promise<Payment | undefined> {
     const payment = this.paymentsList.get(id);
     if (!payment) {
       return undefined;
@@ -712,6 +776,8 @@ export class MemStorage implements IStorage {
       status,
       paidDate: paidDate || payment.paidDate,
       paymentMethod: paymentMethod || payment.paymentMethod,
+      notes: notes || payment.notes,
+      proofImagePath: proofImagePath || payment.proofImagePath,
       updatedAt: new Date(),
     };
     this.paymentsList.set(id, updatedPayment);

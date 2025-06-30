@@ -10,6 +10,7 @@ import LoginPage from "@/pages/login";
 import DashboardPage from "@/pages/dashboard";
 import ProfilePage from "@/pages/profile";
 import BantuanPage from "@/pages/bantuan";
+import PaymentPage from "@/pages/payment";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -60,6 +61,7 @@ function Router() {
       <Route path="/login" component={LoginPage} />
       <Route path="/dashboard" component={DashboardPage} />
       <Route path="/profile" component={ProfilePage} />
+      <Route path="/payment" component={PaymentPage} />
       <Route path="/onboarding" component={OnboardingPage} />
       <Route path="/splash" component={SplashScreen} />
       <Route path="/bantuan" component={BantuanPage} />

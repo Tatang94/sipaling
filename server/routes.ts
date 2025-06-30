@@ -11,7 +11,8 @@ import fs from "fs/promises";
 // Configure multer for file uploads
 const storage_config = multer.diskStorage({
   destination: async (req, file, cb) => {
-    const uploadDir = path.join(process.cwd(), 'uploads', 'rooms');
+    const uploadType = req.route?.path?.includes('payment') ? 'payments' : 'rooms';
+    const uploadDir = path.join(process.cwd(), 'uploads', uploadType);
     try {
       await fs.mkdir(uploadDir, { recursive: true });
       cb(null, uploadDir);
@@ -524,6 +525,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get single payment by ID
+  app.get("/api/payments/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid payment ID" });
+      }
+
+      const payment = await storage.getPaymentById(id);
+      if (!payment) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+
+      res.json(payment);
+    } catch (error) {
+      console.error("Error fetching payment:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Process payment by tenant
+  app.post("/api/payments/:id/pay", upload.single('proofImage'), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid payment ID" });
+      }
+
+      const { paymentMethod, notes } = req.body;
+      if (!paymentMethod) {
+        return res.status(400).json({ error: "Payment method is required" });
+      }
+
+      const payment = await storage.getPaymentById(id);
+      if (!payment) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+
+      if (payment.status === "paid") {
+        return res.status(400).json({ error: "Payment already completed" });
+      }
+
+      // Update payment status to "processing" with proof
+      const updatedPayment = await storage.updatePaymentStatus(
+        id, 
+        "processing", 
+        undefined, 
+        paymentMethod,
+        notes,
+        req.file ? `/uploads/${req.file.filename}` : undefined
+      );
+
+      // Send WhatsApp notification to owner
+      const message = `🔔 Pembayaran Masuk!
+
+Tenant: ${payment.tenantName}
+Kamar: ${payment.roomNumber}
+Kos: ${payment.kosName}
+Jumlah: Rp ${parseInt(payment.amount).toLocaleString('id-ID')}
+Metode: ${paymentMethod}
+
+Silakan cek dan verifikasi pembayaran melalui dashboard.`;
+
+      // In production, integrate with WhatsApp API
+      console.log("WhatsApp notification would be sent:", message);
+
+      res.json({
+        ...updatedPayment,
+        message: "Pembayaran berhasil disubmit dan sedang diverifikasi"
+      });
+    } catch (error) {
+      console.error("Error processing payment:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/payments/overdue/:ownerId", async (req, res) => {
     try {
       const ownerId = parseInt(req.params.ownerId);
@@ -535,6 +612,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(overduePayments);
     } catch (error) {
       console.error("Error fetching overdue payments:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Send payment reminder via WhatsApp
+  app.post("/api/payments/:id/remind", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid payment ID" });
+      }
+
+      const payment = await storage.getPaymentById(id);
+      if (!payment) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+
+      const dueDate = new Date(payment.dueDate).toLocaleDateString('id-ID');
+      const message = `🏠 Reminder Pembayaran Sewa
+
+Halo ${payment.tenantName}!
+
+Ini adalah pengingat untuk pembayaran sewa:
+• Kamar: ${payment.roomNumber}
+• Kos: ${payment.kosName}
+• Jumlah: Rp ${parseInt(payment.amount).toLocaleString('id-ID')}
+• Jatuh Tempo: ${dueDate}
+
+Mohon segera lakukan pembayaran melalui aplikasi atau hubungi kami. Terima kasih!`;
+
+      // In production, integrate with WhatsApp API
+      console.log("WhatsApp reminder would be sent:", message);
+
+      res.json({ 
+        success: true, 
+        message: "Reminder berhasil dikirim via WhatsApp" 
+      });
+    } catch (error) {
+      console.error("Error sending reminder:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

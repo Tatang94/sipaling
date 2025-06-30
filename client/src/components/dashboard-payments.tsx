@@ -25,9 +25,10 @@ interface Payment {
   amount: string;
   dueDate: string;
   paidDate?: string | null;
-  status: 'paid' | 'pending' | 'overdue';
+  status: 'paid' | 'pending' | 'overdue' | 'processing';
   paymentMethod?: string | null;
   notes?: string | null;
+  proofImagePath?: string | null;
   ownerId: number;
   bookingId: number;
   createdAt: string;
@@ -93,10 +94,35 @@ export function DashboardPayments({ ownerId }: DashboardPaymentsProps) {
   };
 
   const handleSendReminder = (paymentId: number) => {
-    // This would typically send a notification/reminder
-    toast({
-      title: "Reminder Terkirim",
-      description: "Reminder pembayaran telah dikirim ke tenant.",
+    fetch(`/api/payments/${paymentId}/remind`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    })
+    .then(response => response.json())
+    .then(() => {
+      toast({
+        title: "Reminder Terkirim",
+        description: "Reminder pembayaran telah dikirim via WhatsApp ke tenant.",
+      });
+    })
+    .catch(() => {
+      toast({
+        title: "Error",
+        description: "Gagal mengirim reminder.",
+        variant: "destructive",
+      });
+    });
+  };
+
+  const handleSendPaymentLink = (paymentId: number) => {
+    const paymentLink = `${window.location.origin}/payment?id=${paymentId}`;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(paymentLink).then(() => {
+      toast({
+        title: "Link Disalin",
+        description: "Link pembayaran telah disalin ke clipboard. Kirim ke tenant melalui WhatsApp.",
+      });
     });
   };
 
@@ -348,16 +374,46 @@ export function DashboardPayments({ ownerId }: DashboardPaymentsProps) {
                   </div>
                 )}
 
-                {payment.status === 'pending' && (
-                  <div className="flex gap-2 mt-3">
-                    <Button size="sm" className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600">
-                      Konfirmasi Pembayaran
+                <div className="flex gap-2 mt-3">
+                  {payment.status === 'pending' && (
+                    <>
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleConfirmPayment(payment.id)}
+                        disabled={updatePaymentMutation.isPending}
+                        className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600"
+                      >
+                        Konfirmasi Pembayaran
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => handleSendReminder(payment.id)}
+                        className="border-teal-200 text-teal-700 hover:bg-teal-50"
+                      >
+                        Kirim Reminder
+                      </Button>
+                    </>
+                  )}
+                  {payment.status === 'processing' && (
+                    <Button 
+                      size="sm" 
+                      onClick={() => handleConfirmPayment(payment.id)}
+                      disabled={updatePaymentMutation.isPending}
+                      className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600"
+                    >
+                      Verifikasi & Terima
                     </Button>
-                    <Button size="sm" variant="outline" className="border-teal-200 text-teal-700 hover:bg-teal-50">
-                      Kirim Reminder
-                    </Button>
-                  </div>
-                )}
+                  )}
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => handleSendPaymentLink(payment.id)}
+                    className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                  >
+                    Salin Link Pembayaran
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
