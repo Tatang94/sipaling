@@ -142,6 +142,9 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - June 30, 2025: Redesigned dashboard with mobile-first responsive design for smartphone compatibility
 - June 30, 2025: Created separate dashboard views for pencari kos and pemilik kos with appropriate features
 - June 30, 2025: Added booking management system using localStorage for demo purposes
+- June 30, 2025: Replaced "Beranda" button with "Profil" button in navigation
+- June 30, 2025: Created comprehensive profile page with photo upload, email/password/WhatsApp editing
+- June 30, 2025: Implemented profile photo management with 2MB file size limit and preview functionality
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

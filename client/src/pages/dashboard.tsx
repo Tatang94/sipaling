@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import CompactDashboard from "@/components/compact-dashboard";
 import { 
-  Home, 
+  User, 
   LogOut, 
   Menu,
   Phone,
@@ -34,11 +34,11 @@ export default function DashboardPage() {
     <nav className={`${isMobile ? "space-y-2" : "flex space-x-4"}`}>
       <Button
         variant="ghost"
-        onClick={() => setLocation("/")}
+        onClick={() => setLocation("/profile")}
         className={`${isMobile ? "w-full justify-start" : ""} text-gray-600 hover:text-primary`}
       >
-        <Home className="w-4 h-4 mr-2" />
-        Beranda
+        <User className="w-4 h-4 mr-2" />
+        Profil
       </Button>
       <Button
         variant="ghost"

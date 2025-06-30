@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { 
-  Home, 
+  User, 
   Building2, 
   Users, 
   CreditCard, 
@@ -184,11 +184,11 @@ export default function CompactDashboard() {
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => setLocation("/")}
+        onClick={() => setLocation("/profile")}
         className={`${isMobile ? "w-full justify-start" : ""} text-gray-600 hover:text-primary`}
       >
-        <Home className="w-4 h-4 mr-2" />
-        Beranda
+        <User className="w-4 h-4 mr-2" />
+        Profil
       </Button>
       <Button
         variant="ghost"
@@ -263,7 +263,7 @@ export default function CompactDashboard() {
           <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
             <CardContent className="p-3">
               <div className="text-center">
-                <Home className="h-6 w-6 text-orange-600 mx-auto mb-1" />
+                <Building2 className="h-6 w-6 text-orange-600 mx-auto mb-1" />
                 <p className="text-lg font-bold text-orange-800">{stats.availableRooms}</p>
                 <p className="text-xs text-orange-600">Kamar Kosong</p>
               </div>
