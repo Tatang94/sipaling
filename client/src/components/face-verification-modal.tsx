@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { RegularCamera } from "./regular-camera";
+import { FaceScanCamera } from "./face-scan-camera";
 import { useToast } from "@/hooks/use-toast";
 
 interface FaceVerificationModalProps {
@@ -132,7 +132,7 @@ export function FaceVerificationModal({
             </p>
           </div>
           
-          <RegularCamera
+          <FaceScanCamera
             mode="login"
             onCapture={handleCameraCapture}
             onError={handleCameraError}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { RegularCamera } from "./regular-camera";
+import { FaceScanCamera } from "./face-scan-camera";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { CheckCircle } from "lucide-react";
@@ -158,7 +158,7 @@ export function FaceRegistrationModal({
                 </p>
               </div>
               
-              <RegularCamera
+              <FaceScanCamera
                 mode="register"
                 onCapture={handleCameraCapture}
                 onError={handleCameraError}
