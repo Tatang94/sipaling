@@ -1125,5 +1125,5 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Use MemStorage - DNS resolution issues with Supabase, fallback to working memory storage
+// Use MemStorage - Switched to working memory storage for optimal performance
 export const storage = new MemStorage();

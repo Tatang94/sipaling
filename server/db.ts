@@ -5,20 +5,21 @@ import * as schema from "@shared/schema";
 
 neonConfig.webSocketConstructor = ws;
 
-// Configure database connection
-if (!process.env.DATABASE_URL) {
-  console.log("DATABASE_URL not found, will use in-memory storage");
-}
+// Configure database connection with Replit PostgreSQL
+const DATABASE_URL = process.env.DATABASE_URL || 
+  `postgresql://${process.env.PGUSER}:${process.env.PGPASSWORD}@${process.env.PGHOST}:${process.env.PGPORT}/${process.env.PGDATABASE}?sslmode=require`;
 
 let pool: Pool | null = null;
 let db: any = null;
 
 try {
-  if (process.env.DATABASE_URL) {
+  if (DATABASE_URL && process.env.PGHOST) {
     neonConfig.webSocketConstructor = ws;
-    pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    pool = new Pool({ connectionString: DATABASE_URL });
     db = drizzle({ client: pool, schema });
-    console.log("Database connection configured successfully");
+    console.log("Database connection configured successfully with Replit PostgreSQL");
+  } else {
+    console.log("DATABASE_URL not found, will use in-memory storage");
   }
 } catch (error) {
   console.warn("Database connection failed, falling back to in-memory storage:", error);
