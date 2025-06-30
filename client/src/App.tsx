@@ -20,6 +20,7 @@ import KontakPage from "@/pages/kontak";
 import PrivasiPage from "@/pages/privasi";
 import SyaratPage from "@/pages/syarat";
 import DukunganPage from "@/pages/dukungan";
+import AdminScraper from "@/pages/admin-scraper";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -83,6 +84,7 @@ function Router() {
       <Route path="/privasi" component={PrivasiPage} />
       <Route path="/syarat" component={SyaratPage} />
       <Route path="/dukungan" component={DukunganPage} />
+      <Route path="/admin-scraper" component={AdminScraper} />
       <Route component={NotFound} />
     </Switch>
   );

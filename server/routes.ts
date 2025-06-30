@@ -2,6 +2,7 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { lightweightKosScraper } from "./lightweight-scraper";
 import { insertUserSchema, insertBookingSchema, insertRoomSchema, insertKosSchema, insertPaymentSchema } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
@@ -722,8 +723,147 @@ Mohon segera lakukan pembayaran melalui aplikasi atau hubungi kami. Terima kasih
     }
   });
 
-  // Serve uploaded files
+  // Image scraping API endpoints
+  app.post("/api/scrape/kos-images", async (req, res) => {
+    try {
+      const { kosName, city = "tasikmalaya" } = req.body;
+      
+      if (!kosName) {
+        return res.status(400).json({ error: "kosName is required" });
+      }
+
+      console.log(`Starting image scraping for: ${kosName} in ${city}`);
+      
+      const images = await lightweightKosScraper.scrapeKosImages(kosName, city);
+      
+      res.json({
+        success: true,
+        kosName,
+        city,
+        images,
+        count: images.length
+      });
+    } catch (error) {
+      console.error("Error scraping kos images:", error);
+      res.status(500).json({ 
+        error: "Failed to scrape images",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Batch scrape all kos images
+  app.post("/api/scrape/all-kos-images", async (req, res) => {
+    try {
+      console.log("Starting batch scraping for all kos...");
+      
+      // Get all kos from storage
+      const allKos = await storage.getAllKos();
+      const kosList = allKos.map(kos => ({
+        name: kos.name,
+        city: kos.city || "tasikmalaya"
+      }));
+
+      console.log(`Found ${kosList.length} kos to scrape images for`);
+      
+      const results = await lightweightKosScraper.scrapeAllKosImages(kosList);
+      
+      // Update storage with scraped images
+      let updatedCount = 0;
+      for (const [kosName, images] of Object.entries(results)) {
+        if (images.length > 0) {
+          const kos = allKos.find(k => k.name === kosName);
+          if (kos) {
+            await storage.updateKos(kos.id, { images });
+            updatedCount++;
+            console.log(`✓ Updated ${kosName} with ${images.length} images`);
+          }
+        }
+      }
+      
+      res.json({
+        success: true,
+        message: `Scraped images for ${updatedCount} kos`,
+        results,
+        totalKos: kosList.length,
+        updatedKos: updatedCount
+      });
+    } catch (error) {
+      console.error("Error in batch scraping:", error);
+      res.status(500).json({ 
+        error: "Failed to scrape all images",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Update specific kos with scraped images
+  app.patch("/api/kos/:id/scrape-images", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid kos ID" });
+      }
+
+      const kos = await storage.getKos(id);
+      if (!kos) {
+        return res.status(404).json({ error: "Kos not found" });
+      }
+
+      console.log(`Scraping images for kos: ${kos.name}`);
+      
+      const images = await lightweightKosScraper.scrapeKosImages(kos.name, kos.city);
+      
+      if (images.length > 0) {
+        const updatedKos = await storage.updateKos(id, { images });
+        res.json({
+          success: true,
+          kos: updatedKos,
+          images,
+          count: images.length
+        });
+      } else {
+        res.json({
+          success: false,
+          message: "No images found for this kos",
+          kos: kos.name
+        });
+      }
+    } catch (error) {
+      console.error("Error scraping images for kos:", error);
+      res.status(500).json({ 
+        error: "Failed to scrape images for kos",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Get scraping status
+  app.get("/api/scrape/status", async (req, res) => {
+    try {
+      const allKos = await storage.getAllKos();
+      const stats = {
+        total: allKos.length,
+        withImages: allKos.filter(kos => kos.images && kos.images.length > 0).length,
+        withoutImages: allKos.filter(kos => !kos.images || kos.images.length === 0).length
+      };
+
+      res.json({
+        success: true,
+        stats,
+        kosWithoutImages: allKos
+          .filter(kos => !kos.images || kos.images.length === 0)
+          .map(kos => ({ id: kos.id, name: kos.name, city: kos.city }))
+      });
+    } catch (error) {
+      console.error("Error getting scraping status:", error);
+      res.status(500).json({ error: "Failed to get scraping status" });
+    }
+  });
+
+  // Serve uploaded files and scraped images
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+  app.use('/images', express.static(path.join(process.cwd(), 'public', 'images')));
 
   const httpServer = createServer(app);
   return httpServer;
