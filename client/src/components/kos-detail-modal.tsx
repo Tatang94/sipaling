@@ -84,9 +84,9 @@ export default function KosDetailModal({ kos, isOpen, onClose, onBook }: KosDeta
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md w-[90vw] max-h-[85vh] p-0 overflow-hidden sm:max-w-2xl sm:w-full" aria-describedby="kos-description">
-        <DialogHeader className="relative px-3 py-3 border-b border-gray-200">
-          <DialogTitle className="text-lg font-bold text-gray-900 pr-8">
+      <DialogContent className="max-w-md w-[90vw] max-h-[85vh] p-0 overflow-hidden sm:max-w-2xl sm:w-full flex flex-col" aria-describedby="kos-description">
+        <DialogHeader className="relative px-3 py-2 border-b border-gray-200 flex-shrink-0">
+          <DialogTitle className="text-base font-bold text-gray-900 pr-8 leading-tight">
             {kos.name}
           </DialogTitle>
           <div className="flex items-center space-x-2 mt-1">
@@ -95,19 +95,19 @@ export default function KosDetailModal({ kos, isOpen, onClose, onBook }: KosDeta
               <span className="mr-1">{formatRating(kos.rating)}</span>
               <span>({kos.reviewCount})</span>
             </div>
-            <Badge className={`text-xs ${kos.type === 'putra' ? 'bg-blue-500' : kos.type === 'putri' ? 'bg-pink-500' : 'bg-purple-500'}`}>
+            <Badge className={`text-xs px-2 py-0.5 ${kos.type === 'putra' ? 'bg-blue-500' : kos.type === 'putri' ? 'bg-pink-500' : 'bg-purple-500'}`}>
               {kos.type.charAt(0).toUpperCase() + kos.type.slice(1)}
             </Badge>
           </div>
           <DialogClose asChild>
-            <Button variant="ghost" size="icon" className="absolute right-1 top-1 w-8 h-8">
+            <Button variant="ghost" size="icon" className="absolute right-1 top-1 w-7 h-7">
               <X className="w-4 h-4" />
             </Button>
           </DialogClose>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(85vh-120px)] overflow-y-auto">
-          <div className="p-3 space-y-4">
+        <ScrollArea className="flex-1 overflow-y-auto">
+          <div className="p-3 space-y-3 pb-4">
             {/* Description */}
             <div id="kos-description">
               <p className="text-gray-600 leading-relaxed">{kos.description}</p>
@@ -170,13 +170,16 @@ export default function KosDetailModal({ kos, isOpen, onClose, onBook }: KosDeta
             </div>
 
             {/* Kontak Pemilik */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="text-lg font-semibold mb-3">Kontak Pemilik</h3>
-              <div className="space-y-2">
+            <div className="bg-gray-50 rounded-lg p-3">
+              <h3 className="text-base font-semibold mb-2">Kontak Pemilik</h3>
+              <div className="space-y-1">
                 <p className="text-sm font-medium text-gray-900">{kos.ownerName}</p>
                 <p className="text-sm text-gray-600">{kos.ownerPhone}</p>
               </div>
             </div>
+            
+            {/* Extra padding to ensure content can be scrolled */}
+            <div className="h-4"></div>
           </div>
         </ScrollArea>
 
