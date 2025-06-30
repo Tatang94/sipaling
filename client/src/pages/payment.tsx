@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -40,13 +40,67 @@ export default function PaymentPage() {
   const urlParams = new URLSearchParams(window.location.search);
   const paymentId = urlParams.get('id');
 
-  const { data: payment, isLoading } = useQuery<PaymentData>({
+  // Check for dynamic payment data from booking
+  const [dynamicPayment, setDynamicPayment] = useState<PaymentData | null>(null);
+
+  useEffect(() => {
+    // Check if this is a new booking payment (not in database yet)
+    const bookings = JSON.parse(localStorage.getItem("userBookings") || "[]");
+    const currentBooking = bookings.find((b: any) => b.paymentId === parseInt(paymentId || "0"));
+    
+    if (currentBooking && !dynamicPayment) {
+      // Create dynamic payment data from booking
+      const payment: PaymentData = {
+        id: currentBooking.paymentId,
+        bookingId: currentBooking.paymentId,
+        tenantName: "Pencari Kos",
+        roomNumber: `${currentBooking.kosId.toString().padStart(2, '0')}1`,
+        kosName: currentBooking.kosName,
+        amount: currentBooking.pricePerMonth,
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+        paidDate: null,
+        status: 'pending',
+        paymentMethod: null,
+        notes: null,
+        ownerId: 1
+      };
+      setDynamicPayment(payment);
+    }
+  }, [paymentId, dynamicPayment]);
+
+  const { data: apiPayment, isLoading } = useQuery<PaymentData>({
     queryKey: ['/api/payments', paymentId],
-    enabled: !!paymentId,
+    enabled: !!paymentId && !dynamicPayment,
   });
+
+  const payment = dynamicPayment || apiPayment;
 
   const paymentMutation = useMutation({
     mutationFn: async (formData: FormData) => {
+      // If this is a dynamic payment (from new booking), handle locally
+      if (dynamicPayment) {
+        // Simulate processing time
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Update local booking data
+        const bookings = JSON.parse(localStorage.getItem("userBookings") || "[]");
+        const updatedBookings = bookings.map((b: any) => {
+          if (b.paymentId === dynamicPayment.id) {
+            return {
+              ...b,
+              paymentStatus: 'processing',
+              paymentMethod: selectedMethod,
+              paymentDate: new Date().toISOString()
+            };
+          }
+          return b;
+        });
+        localStorage.setItem("userBookings", JSON.stringify(updatedBookings));
+        
+        return { success: true, paymentId: dynamicPayment.id };
+      }
+      
+      // Otherwise, use API for existing payments
       const response = await fetch(`/api/payments/${paymentId}/pay`, {
         method: 'POST',
         body: formData,
@@ -61,8 +115,31 @@ export default function PaymentPage() {
         title: "Pembayaran Berhasil!",
         description: "Pembayaran Anda telah diterima dan sedang diverifikasi.",
       });
+      
+      // Send WhatsApp notification
+      const message = `🎉 Pembayaran Berhasil!
+
+Terima kasih telah melakukan pembayaran untuk:
+📍 ${payment?.kosName}
+💰 ${payment?.amount ? `Rp ${parseInt(payment.amount).toLocaleString('id-ID')}` : ''}
+
+Status: Sedang diverifikasi
+Metode: ${selectedMethod}
+
+Pemilik kos akan segera menghubungi Anda untuk konfirmasi lebih lanjut.
+
+Terima kasih telah menggunakan SI PALING KOST! 🏠`;
+
+      // Open WhatsApp with pre-filled message
+      const phoneNumber = "6281234567890"; // Owner's WhatsApp
+      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+      window.open(whatsappUrl, '_blank');
+      
       queryClient.invalidateQueries({ queryKey: ['/api/payments'] });
-      setLocation('/dashboard');
+      
+      setTimeout(() => {
+        setLocation('/dashboard');
+      }, 2000);
     },
     onError: (error: any) => {
       toast({

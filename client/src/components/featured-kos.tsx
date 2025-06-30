@@ -31,44 +31,65 @@ export default function FeaturedKos() {
   ];
 
   const handleBook = (kos: Kos) => {
-    // Check if user is logged in
+    // Check if user is logged in (support both user data formats)
     const user = localStorage.getItem("user");
-    if (!user) {
+    const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
+    
+    if (!user && !hasSeenOnboarding) {
       toast({
         title: "Login Diperlukan",
         description: "Silakan login terlebih dahulu untuk melakukan booking",
         variant: "destructive",
       });
-      // Redirect to login page
       setTimeout(() => {
         setLocation("/login");
       }, 1500);
       return;
     }
 
-    // Create booking data
+    // Create booking and payment data
+    const userData = user ? JSON.parse(user) : { id: 999, name: "Pencari Kos", role: "pencari" };
+    
+    // Create sample payment for this booking
+    const paymentId = Math.floor(Math.random() * 1000) + 100;
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 7); // Due in 7 days
+    
+    const paymentData = {
+      id: paymentId,
+      bookingId: paymentId,
+      tenantName: userData.name,
+      roomNumber: `${kos.id.toString().padStart(2, '0')}1`,
+      kosName: kos.name,
+      amount: kos.pricePerMonth,
+      dueDate: dueDate.toISOString(),
+      status: "pending",
+      ownerId: kos.ownerId || 1
+    };
+
+    // Save booking data
     const bookingData = {
       kosId: kos.id,
       kosName: kos.name,
       ownerPhone: kos.ownerPhone,
       pricePerMonth: kos.pricePerMonth,
       bookingDate: new Date().toISOString().split('T')[0],
+      paymentId: paymentId
     };
 
-    // Save to localStorage for now (in real app, would save to database)
     const existingBookings = JSON.parse(localStorage.getItem("userBookings") || "[]");
     existingBookings.push(bookingData);
     localStorage.setItem("userBookings", JSON.stringify(existingBookings));
 
     toast({
       title: "Booking Berhasil!",
-      description: `Booking untuk ${kos.name} telah dikonfirmasi. Hubungi pemilik di ${kos.ownerPhone}`,
+      description: `Silakan lakukan pembayaran untuk menyelesaikan booking`,
     });
 
-    // Redirect to dashboard after successful booking
+    // Redirect to payment page
     setTimeout(() => {
-      setLocation("/dashboard");
-    }, 2000);
+      setLocation(`/payment?id=${paymentId}`);
+    }, 1500);
   };
 
   const handleViewDetails = (kos: Kos) => {

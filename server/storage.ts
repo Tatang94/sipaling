@@ -106,29 +106,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async searchKos(query: string, city?: string, minPrice?: number, maxPrice?: number): Promise<Kos[]> {
-    let queryBuilder = db.select().from(kos);
+    // For simplicity, we'll get all and filter in memory for complex queries
+    const allKos = await this.db.select().from(kos);
     
-    // Apply filters based on parameters
-    if (query || city || minPrice || maxPrice) {
-      // For simplicity, we'll get all and filter in memory for complex queries
-      const allKos = await this.db.select().from(kos);
+    return allKos.filter((k: Kos) => {
+      const matchesQuery = !query || 
+        k.name.toLowerCase().includes(query.toLowerCase()) ||
+        k.description.toLowerCase().includes(query.toLowerCase()) ||
+        k.address.toLowerCase().includes(query.toLowerCase());
       
-      return allKos.filter(k => {
-        const matchesQuery = !query || 
-          k.name.toLowerCase().includes(query.toLowerCase()) ||
-          k.description.toLowerCase().includes(query.toLowerCase()) ||
-          k.address.toLowerCase().includes(query.toLowerCase());
-        
-        const matchesCity = !city || k.city.toLowerCase() === city.toLowerCase();
-        
-        const price = parseFloat(k.pricePerMonth);
-        const matchesPrice = (!minPrice || price >= minPrice) && (!maxPrice || price <= maxPrice);
-        
-        return matchesQuery && matchesCity && matchesPrice && k.isAvailable;
-      });
-    }
-    
-    return await queryBuilder;
+      const matchesCity = !city || k.city.toLowerCase() === city.toLowerCase();
+      
+      const price = parseFloat(k.pricePerMonth);
+      const matchesPrice = (!minPrice || price >= minPrice) && (!maxPrice || price <= maxPrice);
+      
+      return matchesQuery && matchesCity && matchesPrice && k.isAvailable;
+    });
   }
 
   async getFeaturedKos(): Promise<Kos[]> {
