@@ -119,6 +119,11 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - June 30, 2025: Created onboarding flow with role selection (Pencari Kos/Pemilik Kos)
 - June 30, 2025: Added comprehensive help/bantuan page with FAQ and contact info
 - June 30, 2025: Fixed API routing conflicts between search and ID endpoints
+- June 30, 2025: Completed migration to Replit with full authentication system
+- June 30, 2025: Implemented user registration with role-based access (pencari/pemilik)
+- June 30, 2025: Created dashboard for pemilik kos to manage properties and bookings
+- June 30, 2025: Added dashboard for pencari kos to view booking history
+- June 30, 2025: Implemented proper Rupiah currency formatting (IDR)
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
