@@ -156,6 +156,11 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - June 30, 2025: Added payment processing, proof upload, and status tracking features
 - June 30, 2025: Created dedicated payment page with multiple payment methods support
 - June 30, 2025: Enhanced dashboard with payment management and reminder system
+- June 30, 2025: Fixed booking flow to redirect to payment page instead of dashboard
+- June 30, 2025: Improved user display names from "WhatsApp User" to "Pencari Kos" for professional appearance
+- June 30, 2025: Added booking deduplication to prevent duplicate entries in dashboard
+- June 30, 2025: Enhanced payment status tracking with proper status badges (pending, processing, confirmed)
+- June 30, 2025: Implemented functional "Bayar Sekarang" and "Hubungi" buttons with WhatsApp integration
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

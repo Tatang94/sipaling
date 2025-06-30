@@ -191,8 +191,9 @@ export default function LoginPage() {
       // Verify code and login
       const mockUser = {
         id: 999,
-        name: "WhatsApp User",
+        name: "Pencari Kos",
         email: `${whatsAppData.phone}@whatsapp.user`,
+        phone: whatsAppData.phone,
         role: "pencari"
       };
       
