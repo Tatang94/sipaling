@@ -35,6 +35,12 @@ export function RegularCamera({
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Browser tidak mendukung akses kamera');
       }
+
+      // Pastikan video element sudah ada sebelum meminta akses kamera
+      const video = videoRef.current;
+      if (!video) {
+        throw new Error('Video element belum siap. Silakan coba lagi.');
+      }
       
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: {
@@ -46,42 +52,38 @@ export function RegularCamera({
       
       console.log('Kamera berhasil diakses');
       
-      const video = videoRef.current;
-      if (!video) {
-        throw new Error('Video element not found');
-      }
-      
+      // Set stream ke video element
       video.srcObject = stream;
       streamRef.current = stream;
       
-      console.log('Setting state: isCapturing=true, step=capturing');
-      setIsCapturing(true);
-      setCaptureStep('capturing');
-      
-      // Force a re-render after state change
-      setTimeout(() => {
-        console.log('Force update: setting state again');
-        setIsCapturing(true);
-        setCaptureStep('capturing');
-      }, 100);
-      
-      video.onloadedmetadata = () => {
-        console.log('Video metadata loaded');
-        console.log('Final state check: setting isCapturing=true again');
-        setIsCapturing(true);
-        setCaptureStep('capturing');
-        
-        video.play()
-          .then(() => {
-            console.log('Video playing successfully');
-            setIsCapturing(true);
-            setCaptureStep('capturing');
-          })
-          .catch(err => {
-            console.error('Error playing video:', err);
-            onError("Tidak dapat memulai video kamera.");
-          });
+      // Tunggu video element siap, baru update state
+      const waitForVideo = () => {
+        return new Promise<void>((resolve, reject) => {
+          video.onloadedmetadata = () => {
+            console.log('Video metadata loaded');
+            video.play()
+              .then(() => {
+                console.log('Video playing successfully');
+                // Set state hanya setelah video benar-benar siap
+                setIsCapturing(true);
+                setCaptureStep('capturing');
+                resolve();
+              })
+              .catch(reject);
+          };
+          
+          video.onerror = () => {
+            reject(new Error('Video error'));
+          };
+          
+          // Timeout jika video tidak load dalam 10 detik
+          setTimeout(() => {
+            reject(new Error('Video loading timeout'));
+          }, 10000);
+        });
       };
+      
+      await waitForVideo();
       
     } catch (error: any) {
       console.error('Error kamera:', error);
@@ -90,6 +92,8 @@ export function RegularCamera({
         errorMessage += "Izin kamera ditolak. Silakan beri izin kamera di browser Anda.";
       } else if (error && error.name === 'NotFoundError') {
         errorMessage += "Kamera tidak ditemukan. Pastikan perangkat memiliki kamera.";
+      } else if (error && error.message.includes('Video element')) {
+        errorMessage += "Komponen kamera belum siap. Silakan tunggu sebentar dan coba lagi.";
       } else {
         errorMessage += "Pastikan izin kamera sudah diberikan dan browser mendukung kamera.";
       }
@@ -142,7 +146,32 @@ export function RegularCamera({
     setCaptureStep('ready');
   };
 
+  // Pastikan video element tersedia setelah component mount
   useEffect(() => {
+    // Gunakan observer untuk memastikan video element benar-benar ada
+    const checkVideoElement = () => {
+      if (videoRef.current) {
+        console.log('Video element tersedia:', videoRef.current);
+        return true;
+      }
+      return false;
+    };
+
+    // Check immediately
+    if (!checkVideoElement()) {
+      // If not available, wait and check again
+      const timer = setTimeout(() => {
+        if (!checkVideoElement()) {
+          console.warn('Video element belum tersedia setelah 500ms');
+        }
+      }, 500);
+      
+      return () => {
+        clearTimeout(timer);
+        stopCamera();
+      };
+    }
+
     return () => {
       stopCamera();
     };
@@ -180,18 +209,20 @@ export function RegularCamera({
       {/* Regular Camera View */}
       <div className="relative">
         <div className="w-80 h-60 bg-gray-100 border-2 border-gray-300 rounded-lg shadow-lg overflow-hidden">
-          {isCapturing ? (
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover"
-              onLoadedMetadata={() => console.log('Video loaded and ready')}
-              onError={(e) => console.error('Video error:', e)}
-              onCanPlay={() => console.log('Video can play')}
-            />
-          ) : (
+          {/* Video element selalu ada, tapi disembunyikan jika tidak capturing */}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className={`w-full h-full object-cover ${isCapturing ? 'block' : 'hidden'}`}
+            onLoadedMetadata={() => console.log('Video loaded and ready')}
+            onError={(e) => console.error('Video error:', e)}
+            onCanPlay={() => console.log('Video can play')}
+          />
+          
+          {/* Placeholder ketika tidak capturing */}
+          {!isCapturing && (
             <div className="w-full h-full flex items-center justify-center">
               <div className="text-center">
                 <Camera className="mx-auto h-16 w-16 text-gray-400" />
@@ -240,6 +271,9 @@ export function RegularCamera({
           <Button 
             onClick={async () => {
               console.log('Button clicked, calling startCamera');
+              // Pastikan ada delay singkat untuk memastikan DOM sudah render
+              await new Promise(resolve => setTimeout(resolve, 100));
+              
               try {
                 await startCamera();
               } catch (error) {
