@@ -1,8 +1,9 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Camera, CameraOff, CheckCircle } from "lucide-react";
+import { RegularCamera } from "./regular-camera";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { CheckCircle } from "lucide-react";
 
 interface FaceRegistrationModalProps {
   isOpen: boolean;
@@ -11,131 +12,79 @@ interface FaceRegistrationModalProps {
   userName: string;
 }
 
+interface SimpleFaceData {
+  imageData: string;
+  timestamp: string;
+}
+
 export function FaceRegistrationModal({ 
   isOpen, 
   onClose, 
   onFaceRegistered,
   userName 
 }: FaceRegistrationModalProps) {
-  const [isCapturing, setIsCapturing] = useState(false);
   const [capturedImages, setCapturedImages] = useState<string[]>([]);
   const [currentStep, setCurrentStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
   const { toast } = useToast();
 
   const REQUIRED_PHOTOS = 3; // Ambil 3 foto untuk akurasi yang lebih baik
 
-  const startCamera = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'user',
-          width: { ideal: 640 },
-          height: { ideal: 480 }
-        } 
-      });
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        streamRef.current = stream;
-        setIsCapturing(true);
-      }
-    } catch (error) {
-      toast({
-        title: "Error Kamera",
-        description: "Tidak dapat mengakses kamera. Pastikan izin kamera sudah diberikan.",
-        variant: "destructive"
-      });
-    }
-  }, [toast]);
-
-  const stopCamera = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    setIsCapturing(false);
-  }, []);
-
-  const capturePhoto = useCallback(() => {
-    if (videoRef.current && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const video = videoRef.current;
-      const context = canvas.getContext('2d');
-      
-      if (context) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0);
-        
-        const imageData = canvas.toDataURL('image/jpeg', 0.8);
-        const newImages = [...capturedImages, imageData];
-        setCapturedImages(newImages);
-        
-        if (newImages.length < REQUIRED_PHOTOS) {
-          setCurrentStep(newImages.length + 1);
-          toast({
-            title: `Foto ${newImages.length} Berhasil`,
-            description: `Silakan ambil foto ke-${newImages.length + 1} dengan pose berbeda.`,
-          });
-        } else {
-          stopCamera();
-          toast({
-            title: "Semua Foto Berhasil",
-            description: "Memproses data wajah Anda...",
-          });
-          processFaceData(newImages);
-        }
-      }
-    }
-  }, [capturedImages, stopCamera, toast]);
-
-  const processFaceData = async (images: string[]) => {
-    setIsProcessing(true);
+  const handleCameraCapture = async (faceData: SimpleFaceData) => {
+    const newImages = [...capturedImages, faceData.imageData];
+    setCapturedImages(newImages);
     
-    try {
-      // Simulasi processing face data
-      // Dalam implementasi nyata, ini akan menggabungkan multiple images untuk akurasi lebih baik
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Gabungkan multiple face data menjadi satu template
-      const faceTemplate = await createFaceTemplate(images);
-      
-      onFaceRegistered(faceTemplate);
-      
+    if (newImages.length < REQUIRED_PHOTOS) {
+      setCurrentStep(newImages.length + 1);
       toast({
-        title: "Registrasi Wajah Berhasil",
-        description: "Data wajah Anda telah tersimpan dengan aman.",
+        title: `Foto ${newImages.length} Berhasil`,
+        description: `Ambil ${REQUIRED_PHOTOS - newImages.length} foto lagi untuk melengkapi registrasi`,
+        variant: "default",
       });
+    } else {
+      // All photos captured, process registration
+      setIsProcessing(true);
       
-      setTimeout(() => {
+      try {
+        // Simulate face processing
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // For demo purposes, we'll use the first image as the face data
+        const faceData = newImages[0];
+        
+        toast({
+          title: "Registrasi Berhasil",
+          description: "Wajah Anda telah terdaftar. Sekarang Anda dapat login menggunakan wajah.",
+          variant: "default",
+        });
+        
+        onFaceRegistered(faceData);
         onClose();
-      }, 1500);
-      
-    } catch (error) {
-      toast({
-        title: "Error Processing",
-        description: "Gagal memproses data wajah. Silakan coba lagi.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsProcessing(false);
+        
+        // Reset state
+        setCapturedImages([]);
+        setCurrentStep(1);
+        
+      } catch (error) {
+        console.error('Face registration error:', error);
+        toast({
+          title: "Registrasi Gagal",
+          description: "Terjadi kesalahan saat mendaftarkan wajah. Silakan coba lagi.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 
-  // Simulasi pembuatan face template dari multiple images
-  const createFaceTemplate = async (images: string[]): Promise<string> => {
-    // Dalam implementasi nyata, ini akan menggunakan algoritma face recognition
-    // untuk membuat template yang unik dari multiple angles
-    return btoa(JSON.stringify({
-      userId: Date.now(),
-      images: images,
-      timestamp: new Date().toISOString(),
-      version: "1.0"
-    }));
+  const handleCameraError = (error: string) => {
+    console.error('Camera error:', error);
+    toast({
+      title: "Error Kamera",
+      description: error,
+      variant: "destructive",
+    });
   };
 
   const resetRegistration = () => {
@@ -144,141 +93,100 @@ export function FaceRegistrationModal({
     setIsProcessing(false);
   };
 
-  useEffect(() => {
-    if (isOpen) {
-      resetRegistration();
-    } else {
-      stopCamera();
-    }
-  }, [isOpen, stopCamera]);
-
-  useEffect(() => {
-    return () => {
-      stopCamera();
-    };
-  }, [stopCamera]);
-
-  const getInstructions = () => {
+  const getStepInstructions = () => {
     switch (currentStep) {
       case 1:
-        return "Posisikan wajah Anda di tengah kamera dan lihat langsung ke depan";
+        return "Foto 1: Hadap lurus ke kamera dengan ekspresi normal";
       case 2:
-        return "Miringkan kepala sedikit ke kiri dan tersenyum";
+        return "Foto 2: Sedikit miringkan kepala ke kiri";
       case 3:
-        return "Miringkan kepala sedikit ke kanan dan tetap lihat ke kamera";
+        return "Foto 3: Sedikit miringkan kepala ke kanan";
       default:
-        return "Memproses data wajah Anda...";
+        return "Memproses data wajah...";
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-center">Registrasi Wajah</DialogTitle>
+          <DialogTitle className="text-center text-lg font-semibold">
+            Registrasi Wajah
+          </DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
-          <div className="text-center text-sm text-gray-600">
-            Hai {userName}! Daftarkan wajah Anda untuk keamanan tambahan
-          </div>
-          
           <div className="text-center">
-            <div className="text-lg font-semibold text-teal-600">
-              Foto {Math.min(currentStep, REQUIRED_PHOTOS)} dari {REQUIRED_PHOTOS}
-            </div>
-            <div className="text-sm text-gray-500 mt-1">
-              {getInstructions()}
-            </div>
+            <p className="text-sm text-gray-600">
+              Hai <span className="font-semibold">{userName}</span>!
+            </p>
+            <p className="text-sm text-gray-600">
+              Ambil {REQUIRED_PHOTOS} foto wajah untuk registrasi
+            </p>
           </div>
           
-          <div className="relative bg-gray-100 rounded-lg overflow-hidden aspect-[4/3]">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover"
-              style={{ display: isCapturing ? 'block' : 'none' }}
-            />
-            {!isCapturing && !isProcessing && (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <CameraOff className="mx-auto h-12 w-12 text-gray-400" />
-                  <p className="mt-2 text-sm text-gray-500">Kamera tidak aktif</p>
-                </div>
+          {!isProcessing ? (
+            <>
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <p className="text-sm text-blue-800 text-center">
+                  <span className="font-semibold">Langkah {currentStep} dari {REQUIRED_PHOTOS}</span>
+                </p>
+                <p className="text-xs text-blue-600 text-center mt-1">
+                  {getStepInstructions()}
+                </p>
               </div>
-            )}
-            {isProcessing && (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <CheckCircle className="mx-auto h-12 w-12 text-green-500 animate-pulse" />
-                  <p className="mt-2 text-sm text-gray-500">Memproses data wajah...</p>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <canvas ref={canvasRef} className="hidden" />
-          
-          {/* Progress indicator */}
-          <div className="flex gap-1 justify-center">
-            {Array.from({ length: REQUIRED_PHOTOS }, (_, i) => (
-              <div
-                key={i}
-                className={`h-2 w-8 rounded-full ${
-                  i < capturedImages.length
-                    ? 'bg-green-500'
-                    : i === currentStep - 1
-                    ? 'bg-teal-500'
-                    : 'bg-gray-300'
-                }`}
+              
+              <RegularCamera
+                mode="register"
+                onCapture={handleCameraCapture}
+                onError={handleCameraError}
+                isProcessing={false}
+                className="w-full"
               />
-            ))}
-          </div>
-          
-          <div className="flex gap-2">
-            {!isProcessing ? (
-              <>
-                {!isCapturing ? (
-                  <Button 
-                    onClick={startCamera} 
-                    className="flex-1"
+              
+              {/* Progress indicator */}
+              <div className="flex justify-center space-x-2">
+                {Array.from({ length: REQUIRED_PHOTOS }).map((_, index) => (
+                  <div
+                    key={index}
+                    className={`w-3 h-3 rounded-full ${
+                      index < capturedImages.length
+                        ? 'bg-green-500'
+                        : index === capturedImages.length
+                        ? 'bg-blue-500'
+                        : 'bg-gray-300'
+                    }`}
+                  />
+                ))}
+              </div>
+              
+              {capturedImages.length > 0 && (
+                <div className="text-center">
+                  <Button
+                    onClick={resetRegistration}
                     variant="outline"
+                    size="sm"
                   >
-                    <Camera className="mr-2 h-4 w-4" />
-                    Mulai Registrasi
+                    Mulai Ulang
                   </Button>
-                ) : (
-                  <>
-                    <Button 
-                      onClick={capturePhoto} 
-                      className="flex-1"
-                      disabled={capturedImages.length >= REQUIRED_PHOTOS}
-                    >
-                      <Camera className="mr-2 h-4 w-4" />
-                      Ambil Foto
-                    </Button>
-                    <Button 
-                      onClick={stopCamera} 
-                      variant="outline"
-                    >
-                      <CameraOff className="mr-2 h-4 w-4" />
-                      Batal
-                    </Button>
-                  </>
-                )}
-              </>
-            ) : (
-              <Button disabled className="flex-1">
-                Memproses...
-              </Button>
-            )}
-          </div>
-          
-          <div className="text-xs text-gray-500 text-center">
-            Data wajah Anda akan dienkripsi dan disimpan dengan aman untuk verifikasi login
-          </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center">
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">
+                  Memproses data wajah...
+                </p>
+                <p className="text-xs text-gray-600">
+                  Tunggu sebentar, kami sedang menyimpan data wajah Anda
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
