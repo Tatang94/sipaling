@@ -5,8 +5,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { CheckCircle, AlertCircle, Scan } from "lucide-react";
-import { CircularFaceCamera } from "@/components/circular-face-camera";
-import type { FaceDescriptor } from "@/hooks/use-face-api";
+import { SimpleCircularCamera } from "@/components/simple-circular-camera";
+
+interface SimpleFaceData {
+  imageData: string;
+  timestamp: string;
+}
 
 export default function FaceLogin() {
   const [, setLocation] = useLocation();
@@ -14,12 +18,11 @@ export default function FaceLogin() {
   const [loginStep, setLoginStep] = useState<'ready' | 'verifying' | 'success' | 'failed'>('ready');
 
   const loginMutation = useMutation({
-    mutationFn: async (faceData: FaceDescriptor) => {
-      // Convert face descriptor to base64 for API
+    mutationFn: async (faceData: SimpleFaceData) => {
+      // Convert face data to base64 for API
       const faceDataString = btoa(JSON.stringify({
-        descriptor: Array.from(faceData.descriptor),
-        confidence: faceData.confidence,
-        timestamp: new Date().toISOString(),
+        imageData: faceData.imageData,
+        timestamp: faceData.timestamp,
         type: 'login'
       }));
       
@@ -56,7 +59,7 @@ export default function FaceLogin() {
     },
   });
 
-  const handleFaceCapture = (faceData: FaceDescriptor) => {
+  const handleFaceCapture = (faceData: SimpleFaceData) => {
     setLoginStep('verifying');
     loginMutation.mutate(faceData);
   };
@@ -114,7 +117,7 @@ export default function FaceLogin() {
         <CardContent>
           <div className="space-y-6">
             {/* Circular Face Camera */}
-            <CircularFaceCamera
+            <SimpleCircularCamera
               mode="login"
               onCapture={handleFaceCapture}
               onError={handleError}

@@ -11,9 +11,13 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { CircularFaceCamera } from "@/components/circular-face-camera";
+import { SimpleCircularCamera } from "@/components/simple-circular-camera";
 import { Camera, UserPlus, Shield } from "lucide-react";
-import type { FaceDescriptor } from "@/hooks/use-face-api";
+
+interface SimpleFaceData {
+  imageData: string;
+  timestamp: string;
+}
 
 const registerSchema = z.object({
   name: z.string().min(2, "Nama minimal 2 karakter"),
@@ -44,12 +48,11 @@ export default function FaceRegister() {
   const role = watch("role");
 
   const createAccountMutation = useMutation({
-    mutationFn: async (data: { userData: RegisterForm; faceData: FaceDescriptor }) => {
-      // Convert face descriptor to base64 for API
+    mutationFn: async (data: { userData: RegisterForm; faceData: SimpleFaceData }) => {
+      // Convert face data to base64 for API
       const faceDataString = btoa(JSON.stringify({
-        descriptor: Array.from(data.faceData.descriptor),
-        confidence: data.faceData.confidence,
-        timestamp: new Date().toISOString(),
+        imageData: data.faceData.imageData,
+        timestamp: data.faceData.timestamp,
         type: 'register'
       }));
       
@@ -90,7 +93,7 @@ export default function FaceRegister() {
     setShowFaceRegistration(true);
   };
 
-  const handleFaceRegistration = (faceData: FaceDescriptor) => {
+  const handleFaceRegistration = (faceData: SimpleFaceData) => {
     if (registrationData) {
       createAccountMutation.mutate({
         userData: registrationData,
@@ -223,7 +226,7 @@ export default function FaceRegister() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <CircularFaceCamera
+              <SimpleCircularCamera
                 mode="register"
                 onCapture={handleFaceRegistration}
                 onError={handleError}

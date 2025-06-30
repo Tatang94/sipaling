@@ -1,0 +1,239 @@
+import { useState, useRef, useCallback, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Camera, CameraOff, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+
+interface SimpleFaceData {
+  imageData: string;
+  timestamp: string;
+}
+
+interface SimpleCircularCameraProps {
+  onCapture: (faceData: SimpleFaceData) => void;
+  onError: (error: string) => void;
+  mode: 'register' | 'login';
+  isProcessing?: boolean;
+  className?: string;
+}
+
+export function SimpleCircularCamera({ 
+  onCapture, 
+  onError, 
+  mode, 
+  isProcessing = false,
+  className = ""
+}: SimpleCircularCameraProps) {
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [captureStep, setCaptureStep] = useState<'ready' | 'capturing' | 'processing' | 'success' | 'failed'>('ready');
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const startCamera = useCallback(async () => {
+    try {
+      console.log('Meminta akses kamera...');
+      
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'user',
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        } 
+      });
+      
+      console.log('Kamera berhasil diakses');
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        streamRef.current = stream;
+        setIsCapturing(true);
+        setCaptureStep('capturing');
+        
+        console.log('Kamera mulai streaming');
+      }
+    } catch (error) {
+      console.error('Error kamera:', error);
+      onError("Tidak dapat mengakses kamera. Pastikan izin kamera sudah diberikan dan browser mendukung kamera.");
+    }
+  }, [onError]);
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setIsCapturing(false);
+    setCaptureStep('ready');
+  }, []);
+
+  const capturePhoto = useCallback(() => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    setCaptureStep('processing');
+
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+    const context = canvas.getContext('2d');
+    
+    if (!context) {
+      onError("Tidak dapat memproses gambar");
+      return;
+    }
+
+    // Set canvas size to match video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    // Draw video frame to canvas
+    context.drawImage(video, 0, 0);
+    
+    // Get image data
+    const imageData = canvas.toDataURL('image/jpeg', 0.8);
+    
+    setCaptureStep('success');
+    stopCamera();
+    
+    // Prepare face data
+    const faceData: SimpleFaceData = {
+      imageData,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log('Foto berhasil diambil');
+    onCapture(faceData);
+  }, [onCapture, onError, stopCamera]);
+
+  const resetCapture = () => {
+    setCaptureStep('ready');
+  };
+
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, [stopCamera]);
+
+  const getStatusText = () => {
+    switch (captureStep) {
+      case 'ready':
+        return "Tekan tombol untuk mulai menggunakan kamera";
+      case 'capturing':
+        return "Posisikan wajah di tengah kamera bulat dan tekan tombol foto";
+      case 'processing':
+        return "Memproses foto...";
+      case 'success':
+        return mode === 'register' ? "Foto berhasil diambil untuk registrasi!" : "Foto berhasil diambil untuk login!";
+      case 'failed':
+        return "Gagal mengambil foto. Silakan coba lagi.";
+      default:
+        return "";
+    }
+  };
+
+  const status = getStatusText();
+  const statusColor = captureStep === 'success' ? 'text-green-600' : 
+                     captureStep === 'failed' ? 'text-red-600' : 
+                     captureStep === 'processing' ? 'text-blue-600' : 'text-gray-600';
+
+  return (
+    <div className={`flex flex-col items-center space-y-4 ${className}`}>
+      {/* Circular Camera View */}
+      <div className="relative">
+        <div className="w-64 h-64 rounded-full overflow-hidden bg-gray-100 border-4 border-gray-300 shadow-lg">
+          {isCapturing ? (
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="text-center">
+                <Camera className="mx-auto h-16 w-16 text-gray-400" />
+                <p className="mt-2 text-sm text-gray-500">Kamera Wajah</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Status Overlay */}
+        {captureStep === 'processing' && (
+          <div className="absolute inset-0 w-64 h-64 rounded-full bg-blue-500/20 flex items-center justify-center">
+            <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
+          </div>
+        )}
+        
+        {captureStep === 'success' && (
+          <div className="absolute inset-0 w-64 h-64 rounded-full bg-green-500/20 flex items-center justify-center">
+            <CheckCircle className="h-12 w-12 text-green-600" />
+          </div>
+        )}
+        
+        {captureStep === 'failed' && (
+          <div className="absolute inset-0 w-64 h-64 rounded-full bg-red-500/20 flex items-center justify-center">
+            <AlertCircle className="h-12 w-12 text-red-600" />
+          </div>
+        )}
+
+        {/* Camera Frame Indicator */}
+        {isCapturing && (
+          <div className="absolute inset-0 w-64 h-64 rounded-full border-4 border-dashed border-teal-500 animate-pulse pointer-events-none"></div>
+        )}
+      </div>
+
+      {/* Status Text */}
+      <p className={`text-sm font-medium text-center max-w-xs ${statusColor}`}>
+        {status}
+      </p>
+
+      {/* Control Buttons */}
+      <div className="flex gap-3">
+        {captureStep === 'ready' && (
+          <Button 
+            onClick={startCamera} 
+            disabled={isProcessing}
+            className="flex items-center gap-2"
+          >
+            <Camera className="h-4 w-4" />
+            {mode === 'register' ? 'Mulai Registrasi' : 'Mulai Login'}
+          </Button>
+        )}
+        
+        {captureStep === 'capturing' && (
+          <>
+            <Button 
+              onClick={capturePhoto} 
+              className="flex items-center gap-2"
+            >
+              <CheckCircle className="h-4 w-4" />
+              Ambil Foto
+            </Button>
+            <Button 
+              onClick={stopCamera} 
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <CameraOff className="h-4 w-4" />
+              Batal
+            </Button>
+          </>
+        )}
+        
+        {(captureStep === 'failed') && (
+          <Button 
+            onClick={resetCapture} 
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Camera className="h-4 w-4" />
+            Coba Lagi
+          </Button>
+        )}
+      </div>
+
+      {/* Hidden Canvas for Processing */}
+      <canvas ref={canvasRef} className="hidden" />
+    </div>
+  );
+}
