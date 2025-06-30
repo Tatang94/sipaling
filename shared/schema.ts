@@ -41,6 +41,24 @@ export const kos = pgTable("kos", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const rooms = pgTable("rooms", {
+  id: serial("id").primaryKey(),
+  number: text("number").notNull(),
+  kosName: text("kos_name").notNull(),
+  type: text("type").notNull(),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  size: text("size").notNull(),
+  floor: integer("floor").notNull(),
+  description: text("description"),
+  facilities: text("facilities").array().notNull(),
+  images: text("images").array().notNull().default([]),
+  isOccupied: boolean("is_occupied").notNull().default(false),
+  tenantName: text("tenant_name"),
+  ownerId: integer("owner_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const bookings = pgTable("bookings", {
   id: serial("id").primaryKey(),
   kosId: integer("kos_id").references(() => kos.id).notNull(),
@@ -77,6 +95,17 @@ export const insertKosSchema = createInsertSchema(kos).omit({
   ownerId: z.number().optional(),
 });
 
+export const insertRoomSchema = createInsertSchema(rooms).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  price: z.string().transform((val) => val),
+  isOccupied: z.boolean().default(false),
+  tenantName: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+});
+
 export const insertBookingSchema = createInsertSchema(bookings).omit({
   id: true,
   createdAt: true,
@@ -89,6 +118,7 @@ export const insertBookingSchema = createInsertSchema(bookings).omit({
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   ownedKos: many(kos, { relationName: "ownerKos" }),
+  ownedRooms: many(rooms, { relationName: "ownerRooms" }),
   bookings: many(bookings),
 }));
 
@@ -98,6 +128,14 @@ export const kosRelations = relations(kos, ({ many, one }) => ({
     fields: [kos.ownerId],
     references: [users.id],
     relationName: "ownerKos",
+  }),
+}));
+
+export const roomsRelations = relations(rooms, ({ one }) => ({
+  owner: one(users, {
+    fields: [rooms.ownerId],
+    references: [users.id],
+    relationName: "ownerRooms",
   }),
 }));
 
@@ -116,5 +154,7 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertKos = z.infer<typeof insertKosSchema>;
 export type Kos = typeof kos.$inferSelect;
+export type InsertRoom = z.infer<typeof insertRoomSchema>;
+export type Room = typeof rooms.$inferSelect;
 export type InsertBooking = z.infer<typeof insertBookingSchema>;
 export type Booking = typeof bookings.$inferSelect;

@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AddRoomModal } from "@/components/add-room-modal";
 import { 
   Building2, 
   Users, 
@@ -61,10 +62,7 @@ export function DashboardRooms({ rooms }: DashboardRoomsProps) {
             {occupiedRooms} kamar terisi, {availableRooms} kamar tersedia
           </p>
         </div>
-        <Button className="bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600">
-          <Plus className="h-4 w-4 mr-2" />
-          Tambah Kamar Baru
-        </Button>
+        <AddRoomModal />
       </div>
 
       {/* Summary Cards */}
@@ -196,10 +194,7 @@ export function DashboardRooms({ rooms }: DashboardRoomsProps) {
             <Building2 className="h-16 w-16 text-teal-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-teal-700 mb-2">Belum Ada Kamar</h3>
             <p className="text-teal-600 mb-4">Tambahkan kamar pertama untuk mulai mengelola kos Anda</p>
-            <Button className="bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600">
-              <Plus className="h-4 w-4 mr-2" />
-              Tambah Kamar Baru
-            </Button>
+            <AddRoomModal />
           </CardContent>
         </Card>
       )}

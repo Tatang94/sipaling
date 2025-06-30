@@ -1,8 +1,43 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertBookingSchema } from "@shared/schema";
+import { insertUserSchema, insertBookingSchema, insertRoomSchema } from "@shared/schema";
 import { z } from "zod";
+import multer from "multer";
+import path from "path";
+import fs from "fs/promises";
+
+// Configure multer for file uploads
+const storage_config = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const uploadDir = path.join(process.cwd(), 'uploads', 'rooms');
+    try {
+      await fs.mkdir(uploadDir, { recursive: true });
+      cb(null, uploadDir);
+    } catch (error) {
+      cb(error as Error, uploadDir);
+    }
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage_config,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get all kos
@@ -240,6 +275,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to update booking status" });
     }
   });
+
+  // Room Management Routes
+  
+  // Get all rooms for an owner
+  app.get("/api/rooms/owner/:ownerId", async (req, res) => {
+    try {
+      const ownerId = parseInt(req.params.ownerId);
+      if (isNaN(ownerId)) {
+        return res.status(400).json({ message: "Invalid owner ID" });
+      }
+      
+      const rooms = await storage.getRoomsByOwner(ownerId);
+      res.json(rooms);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch rooms" });
+    }
+  });
+
+  // Add new room with image upload
+  app.post("/api/rooms", upload.array('images', 5), async (req, res) => {
+    try {
+      const files = req.files as Express.Multer.File[];
+      const imageUrls = files ? files.map(file => `/uploads/rooms/${file.filename}`) : [];
+      
+      const roomData = {
+        ...req.body,
+        facilities: JSON.parse(req.body.facilities || '[]'),
+        images: imageUrls,
+        price: req.body.price.toString(),
+        floor: parseInt(req.body.floor),
+        ownerId: parseInt(req.body.ownerId)
+      };
+      
+      const validatedData = insertRoomSchema.parse(roomData);
+      const room = await storage.createRoom(validatedData);
+      
+      res.status(201).json(room);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Data tidak valid", errors: error.errors });
+      }
+      res.status(500).json({ message: "Gagal menambahkan kamar" });
+    }
+  });
+
+  // Update room
+  app.patch("/api/rooms/:id", upload.array('images', 5), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid room ID" });
+      }
+
+      const files = req.files as Express.Multer.File[];
+      const newImageUrls = files ? files.map(file => `/uploads/rooms/${file.filename}`) : [];
+      
+      const updateData: any = { ...req.body };
+      
+      if (req.body.facilities) {
+        updateData.facilities = JSON.parse(req.body.facilities);
+      }
+      
+      if (newImageUrls.length > 0) {
+        const existingImages = JSON.parse(req.body.existingImages || '[]');
+        updateData.images = [...existingImages, ...newImageUrls];
+      }
+      
+      if (req.body.price) {
+        updateData.price = req.body.price.toString();
+      }
+      
+      if (req.body.floor) {
+        updateData.floor = parseInt(req.body.floor);
+      }
+
+      const room = await storage.updateRoom(id, updateData);
+      if (!room) {
+        return res.status(404).json({ message: "Room not found" });
+      }
+      
+      res.json(room);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update room" });
+    }
+  });
+
+  // Delete room
+  app.delete("/api/rooms/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid room ID" });
+      }
+      
+      const success = await storage.deleteRoom(id);
+      if (!success) {
+        return res.status(404).json({ message: "Room not found" });
+      }
+      
+      res.json({ message: "Room deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete room" });
+    }
+  });
+
+  // Serve uploaded files
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
   const httpServer = createServer(app);
   return httpServer;

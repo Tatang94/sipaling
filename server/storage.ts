@@ -1,4 +1,4 @@
-import { users, kos, bookings, type User, type Kos, type InsertUser, type InsertKos, type Booking, type InsertBooking } from "@shared/schema";
+import { users, kos, bookings, rooms, type User, type Kos, type InsertUser, type InsertKos, type Booking, type InsertBooking, type Room, type InsertRoom } from "@shared/schema";
 import { db } from "./db";
 import { eq, like, and, gte, lte, or, ilike } from "drizzle-orm";
 import bcrypt from "bcryptjs";
@@ -21,6 +21,12 @@ export interface IStorage {
   createKos(kos: InsertKos): Promise<Kos>;
   updateKos(id: number, kos: Partial<InsertKos>): Promise<Kos | undefined>;
   deleteKos(id: number): Promise<boolean>;
+  
+  // Room operations
+  createRoom(room: InsertRoom): Promise<Room>;
+  getRoomsByOwner(ownerId: number): Promise<Room[]>;
+  updateRoom(id: number, room: Partial<InsertRoom>): Promise<Room | undefined>;
+  deleteRoom(id: number): Promise<boolean>;
   
   // Booking operations
   createBooking(booking: InsertBooking): Promise<Booking>;
@@ -178,22 +184,53 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return updatedBooking || undefined;
   }
+
+  // Room operations
+  async createRoom(insertRoom: InsertRoom): Promise<Room> {
+    const [newRoom] = await db
+      .insert(rooms)
+      .values(insertRoom)
+      .returning();
+    return newRoom;
+  }
+
+  async getRoomsByOwner(ownerId: number): Promise<Room[]> {
+    return await db.select().from(rooms).where(eq(rooms.ownerId, ownerId));
+  }
+
+  async updateRoom(id: number, updateData: Partial<InsertRoom>): Promise<Room | undefined> {
+    const [updatedRoom] = await db
+      .update(rooms)
+      .set(updateData)
+      .where(eq(rooms.id, id))
+      .returning();
+    return updatedRoom || undefined;
+  }
+
+  async deleteRoom(id: number): Promise<boolean> {
+    const result = await db.delete(rooms).where(eq(rooms.id, id));
+    return (result.rowCount || 0) > 0;
+  }
 }
 
 export class MemStorage implements IStorage {
   private usersList: Map<number, User>;
   private kosList: Map<number, Kos>;
+  private roomsList: Map<number, Room>;
   private bookingsList: Map<number, Booking>;
   private currentUserId: number;
   private currentKosId: number;
+  private currentRoomId: number;
   private currentBookingId: number;
 
   constructor() {
     this.usersList = new Map();
     this.kosList = new Map();
+    this.roomsList = new Map();
     this.bookingsList = new Map();
     this.currentUserId = 1;
     this.currentKosId = 1;
+    this.currentRoomId = 1;
     this.currentBookingId = 1;
     
     // Initialize with sample data
@@ -519,6 +556,51 @@ export class MemStorage implements IStorage {
     };
     this.bookingsList.set(id, updatedBooking);
     return updatedBooking;
+  }
+
+  // Room operations
+  async createRoom(insertRoom: InsertRoom): Promise<Room> {
+    const room: Room = {
+      id: this.currentRoomId++,
+      number: insertRoom.number,
+      kosName: insertRoom.kosName,
+      type: insertRoom.type,
+      price: insertRoom.price,
+      size: insertRoom.size,
+      floor: insertRoom.floor,
+      description: insertRoom.description || null,
+      facilities: insertRoom.facilities,
+      images: insertRoom.images || [],
+      isOccupied: insertRoom.isOccupied || false,
+      tenantName: insertRoom.tenantName || null,
+      ownerId: insertRoom.ownerId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.roomsList.set(room.id, room);
+    return room;
+  }
+
+  async getRoomsByOwner(ownerId: number): Promise<Room[]> {
+    return Array.from(this.roomsList.values()).filter(room => room.ownerId === ownerId);
+  }
+
+  async updateRoom(id: number, updateData: Partial<InsertRoom>): Promise<Room | undefined> {
+    const room = this.roomsList.get(id);
+    if (!room) {
+      return undefined;
+    }
+    const updatedRoom: Room = {
+      ...room,
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    this.roomsList.set(id, updatedRoom);
+    return updatedRoom;
+  }
+
+  async deleteRoom(id: number): Promise<boolean> {
+    return this.roomsList.delete(id);
   }
 }
 
