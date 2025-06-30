@@ -1,12 +1,9 @@
 import { storage } from './storage.js';
 
-async function seedTasikmalayaRealData() {
-  console.log('🌱 Seeding Tasikmalaya kos data from Mamikos...');
+async function seedTasikmalayaCleanData() {
+  console.log('🌱 Seeding Tasikmalaya kos data (without placeholder images)...');
 
   try {
-    // Clear existing data first
-    console.log('🧹 Cleaning existing data...');
-    
     // Add owner for kos listings
     const owner = await storage.createUser({
       name: "Admin SI PALING KOST",
@@ -16,7 +13,7 @@ async function seedTasikmalayaRealData() {
       role: "pemilik"
     });
 
-    // Real Tasikmalaya kos data from Mamikos (watermark-free descriptions)
+    // Real Tasikmalaya kos data (no placeholder images)
     const kosData = [
       {
         name: "Kost Lashira State Tipe A",
@@ -37,6 +34,8 @@ async function seedTasikmalayaRealData() {
         ownerPhone: "+6289663596711",
         isAvailable: true,
         isPromoted: true,
+        roomSize: "3x4 meter",
+        paymentType: "monthly",
         ownerId: owner.id
       },
       {
@@ -58,6 +57,8 @@ async function seedTasikmalayaRealData() {
         ownerPhone: "+6289663596711",
         isAvailable: true,
         isPromoted: true,
+        roomSize: "4x4 meter",
+        paymentType: "monthly",
         ownerId: owner.id
       },
       {
@@ -79,6 +80,8 @@ async function seedTasikmalayaRealData() {
         ownerPhone: "+6289663596711",
         isAvailable: true,
         isPromoted: false,
+        roomSize: "3x3 meter",
+        paymentType: "monthly",
         ownerId: owner.id
       },
       {
@@ -100,6 +103,8 @@ async function seedTasikmalayaRealData() {
         ownerPhone: "+6289663596711",
         isAvailable: true,
         isPromoted: true,
+        roomSize: "3x4 meter",
+        paymentType: "monthly",
         ownerId: owner.id
       },
       {
@@ -121,6 +126,8 @@ async function seedTasikmalayaRealData() {
         ownerPhone: "+6289663596711",
         isAvailable: true,
         isPromoted: true,
+        roomSize: "3x4 meter",
+        paymentType: "monthly",
         ownerId: owner.id
       }
     ];
@@ -131,8 +138,8 @@ async function seedTasikmalayaRealData() {
       await storage.createKos(kosItem);
     }
 
-    console.log('✅ Tasikmalaya real data seeding completed successfully!');
-    console.log(`📊 Added ${kosData.length} authentic kos listings from Tasikmalaya`);
+    console.log('✅ Tasikmalaya clean data seeding completed successfully!');
+    console.log(`📊 Added ${kosData.length} authentic kos listings from Tasikmalaya (no placeholder images)`);
     
   } catch (error) {
     console.error('❌ Error seeding Tasikmalaya data:', error);
@@ -140,9 +147,9 @@ async function seedTasikmalayaRealData() {
   }
 }
 
-// Run if called directly
+// Run if this file is executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  seedTasikmalayaRealData()
+  seedTasikmalayaCleanData()
     .then(() => {
       console.log('🎉 Seeding process completed');
       process.exit(0);
@@ -153,4 +160,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     });
 }
 
-export { seedTasikmalayaRealData };
+export { seedTasikmalayaCleanData };
