@@ -93,6 +93,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="p-4 md:p-6">
+        {/* Booking History Card */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
