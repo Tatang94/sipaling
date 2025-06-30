@@ -7,7 +7,7 @@ import { Star, Heart, MapPin, X, Wifi, Car, Utensils, AirVent, Tv, Bath, Shield,
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { formatPrice, formatRating } from "@/lib/utils";
-import type { Kos } from "@/shared/schema";
+import type { Kos } from "../../../shared/schema";
 
 interface KosDetailModalProps {
   kos: Kos | null;
@@ -84,7 +84,7 @@ export default function KosDetailModal({ kos, isOpen, onClose, onBook }: KosDeta
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl w-full max-h-[90vh] p-0 overflow-hidden" aria-describedby="kos-description">
+      <DialogContent className="max-w-4xl w-[95vw] max-h-[95vh] p-0 overflow-hidden sm:w-full" aria-describedby="kos-description">
         <DialogHeader className="relative px-4 md:px-6 py-4 border-b border-gray-200">
           <DialogTitle className="text-xl md:text-2xl font-bold text-gray-900 pr-10">
             {kos.name}
@@ -106,8 +106,8 @@ export default function KosDetailModal({ kos, isOpen, onClose, onBook }: KosDeta
           </DialogClose>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(90vh-200px)]">
-          <div className="p-4 md:p-6 space-y-6">
+        <ScrollArea className="max-h-[calc(95vh-180px)] overflow-y-auto">
+          <div className="p-3 md:p-6 space-y-4 md:space-y-6">
             {/* Description */}
             <div id="kos-description">
               <p className="text-gray-600 leading-relaxed">{kos.description}</p>
@@ -134,7 +134,7 @@ export default function KosDetailModal({ kos, isOpen, onClose, onBook }: KosDeta
             <div>
               <h3 className="text-lg font-semibold mb-3">Fasilitas</h3>
               <div className="grid grid-cols-2 gap-2">
-                {kos.facilities.map((facility, index) => {
+                {kos.facilities.map((facility: string, index: number) => {
                   const Icon = getFacilityIcon(facility);
                   return (
                     <div key={index} className="flex items-center text-sm text-gray-600 py-1">
@@ -181,24 +181,25 @@ export default function KosDetailModal({ kos, isOpen, onClose, onBook }: KosDeta
         </ScrollArea>
 
         {/* Pricing & Booking */}
-        <div className="border-t border-gray-200 px-4 py-4 md:px-6 bg-white">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-2xl md:text-3xl font-bold text-primary">
+        <div className="border-t border-gray-200 px-3 py-3 md:px-6 md:py-4 bg-white flex-shrink-0">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-xl md:text-2xl font-bold text-primary">
               {formatPrice(kos.pricePerMonth)}
-              <span className="text-base md:text-lg text-gray-500 font-normal">/bulan</span>
+              <span className="text-sm md:text-base text-gray-500 font-normal">/bulan</span>
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsFavorited(!isFavorited)}
+              className="px-3 py-1.5"
             >
               <Heart className={`w-4 h-4 mr-1 ${isFavorited ? 'fill-red-500 text-red-500' : ''}`} />
-              Simpan
+              <span className="hidden sm:inline">Simpan</span>
             </Button>
           </div>
           
           <Button 
-            className="w-full bg-primary hover:bg-primary/90 text-white py-3 rounded-lg font-medium transition-colors"
+            className="w-full bg-primary hover:bg-primary/90 text-white py-2.5 md:py-3 rounded-lg font-medium transition-colors text-sm md:text-base"
             onClick={handleBook}
             disabled={!kos.isAvailable || kos.availableRooms === 0}
           >
