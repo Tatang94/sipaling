@@ -19,13 +19,17 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - **API Style**: RESTful API endpoints
 - **Database ORM**: Drizzle ORM for type-safe database operations
 - **Validation**: Zod schemas for request/response validation
+- **File Upload**: Multer for payment proof uploads
 
 ### Database Architecture
-- **Database**: PostgreSQL (configured for Neon serverless)
+- **Database**: In-memory storage with PostgreSQL schema compatibility
 - **Schema Management**: Drizzle Kit for migrations
 - **Tables**: 
+  - `users` - User accounts with role-based access
   - `kos` - Main accommodation listings
+  - `rooms` - Individual room management
   - `bookings` - User booking records
+  - `payments` - Complete payment tracking and management
 
 ## Key Components
 
@@ -148,6 +152,10 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - June 30, 2025: Successfully migrated from Replit Agent to Replit environment with PostgreSQL database
 - June 30, 2025: Fixed database connection issues and seeded sample data for production deployment
 - June 30, 2025: Resolved all API endpoints and confirmed application is fully functional
+- June 30, 2025: Implemented comprehensive payment system with WhatsApp notifications
+- June 30, 2025: Added payment processing, proof upload, and status tracking features
+- June 30, 2025: Created dedicated payment page with multiple payment methods support
+- June 30, 2025: Enhanced dashboard with payment management and reminder system
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

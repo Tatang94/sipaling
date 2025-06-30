@@ -796,4 +796,5 @@ export class MemStorage implements IStorage {
   }
 }
 
+// Use MemStorage with proper sample data for development
 export const storage = new MemStorage();
