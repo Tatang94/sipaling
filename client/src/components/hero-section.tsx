@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, DollarSign, Search } from "lucide-react";
+import { MapPin, DollarSign, Search, Navigation } from "lucide-react";
 
 export default function HeroSection() {
   const [, setLocation] = useLocation();
@@ -61,13 +61,23 @@ export default function HeroSection() {
                 </Select>
               </div>
               
-              <Button 
-                onClick={handleSearch}
-                className="bg-primary hover:bg-primary/90 text-white py-3 px-6 rounded-lg font-medium transition-colors flex items-center justify-center"
-              >
-                <Search className="w-5 h-5 mr-2" />
-                Cari Kos
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleSearch}
+                  className="bg-primary hover:bg-primary/90 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center flex-1"
+                >
+                  <Search className="w-5 h-5 mr-2" />
+                  Cari Kos
+                </Button>
+                <Button 
+                  onClick={() => setLocation('/cari-lokasi')}
+                  variant="outline"
+                  className="py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center"
+                >
+                  <Navigation className="w-5 h-5 mr-2" />
+                  GPS
+                </Button>
+              </div>
             </div>
           </div>
         </div>

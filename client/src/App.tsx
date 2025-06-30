@@ -6,6 +6,7 @@ import SplashScreen from "@/pages/splash";
 import OnboardingPage from "@/pages/onboarding";
 import Home from "@/pages/home";
 import Search from "@/pages/search";
+import CariLokasiPage from "@/pages/cari-lokasi";
 import LoginPage from "@/pages/login";
 import DashboardPage from "@/pages/dashboard";
 import ProfilePage from "@/pages/profile";
@@ -58,6 +59,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/home" component={Home} />
       <Route path="/search" component={Search} />
+      <Route path="/cari-lokasi" component={CariLokasiPage} />
       <Route path="/login" component={LoginPage} />
       <Route path="/dashboard" component={DashboardPage} />
       <Route path="/profile" component={ProfilePage} />

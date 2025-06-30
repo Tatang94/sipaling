@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Home, Search, HelpCircle, Info, Menu, User } from "lucide-react";
+import { Home, Search, HelpCircle, Info, Menu, User, MapPin } from "lucide-react";
 
 export default function Navigation() {
   const [location] = useLocation();
@@ -11,6 +11,7 @@ export default function Navigation() {
   const navItems = [
     { href: "/", label: "Beranda", icon: Home },
     { href: "/search", label: "Cari Kos", icon: Search },
+    { href: "/cari-lokasi", label: "Lokasi GPS", icon: MapPin },
     { href: "/bantuan", label: "Bantuan", icon: HelpCircle },
     { href: "/tentang", label: "Tentang", icon: Info },
   ];
