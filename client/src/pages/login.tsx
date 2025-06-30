@@ -46,15 +46,7 @@ export default function Login() {
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginForm) => {
-      const response = await apiRequest('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Login gagal');
-      }
+      const response = await apiRequest('POST', '/api/auth/login', data);
       
       return response.json();
     },
@@ -96,14 +88,7 @@ export default function Login() {
 
   const registerFaceMutation = useMutation({
     mutationFn: async (faceData: string) => {
-      const response = await apiRequest(`/api/users/${currentUser.id}/register-face`, {
-        method: 'POST',
-        body: JSON.stringify({ faceData }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Gagal mendaftarkan wajah');
-      }
+      const response = await apiRequest('POST', `/api/users/${currentUser.id}/register-face`, { faceData });
       
       return response.json();
     },

@@ -19,15 +19,7 @@ export default function FaceLogin() {
 
   const loginMutation = useMutation({
     mutationFn: async (faceData: string) => {
-      const response = await apiRequest('/api/auth/face-login', {
-        method: 'POST',
-        body: JSON.stringify({ faceData }),
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Login gagal');
-      }
+      const response = await apiRequest('POST', '/api/auth/face-login', { faceData });
       
       return response.json();
     },

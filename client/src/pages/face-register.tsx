@@ -44,15 +44,7 @@ export default function FaceRegister() {
 
   const createAccountMutation = useMutation({
     mutationFn: async (data: { userData: RegisterForm; faceData: string }) => {
-      const response = await apiRequest('/api/auth/register-face', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Registrasi gagal');
-      }
+      const response = await apiRequest('POST', '/api/auth/register-face', data);
       
       return response.json();
     },
