@@ -138,6 +138,10 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - June 30, 2025: Optimized splash screen design with better proportions and 15-second duration
 - June 30, 2025: Replaced Google and Facebook login with WhatsApp verification system
 - June 30, 2025: Added WhatsApp verification modal with 6-digit code authentication
+- June 30, 2025: Implemented functional "Book Now" buttons with login validation and booking system
+- June 30, 2025: Redesigned dashboard with mobile-first responsive design for smartphone compatibility
+- June 30, 2025: Created separate dashboard views for pencari kos and pemilik kos with appropriate features
+- June 30, 2025: Added booking management system using localStorage for demo purposes
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

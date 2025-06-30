@@ -51,9 +51,34 @@ export default function SearchPage() {
   };
 
   const handleBook = (kos: Kos) => {
+    // Check if user is logged in
+    const user = localStorage.getItem("user");
+    if (!user) {
+      toast({
+        title: "Login Diperlukan",
+        description: "Silakan login terlebih dahulu untuk melakukan booking",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create booking data
+    const bookingData = {
+      kosId: kos.id,
+      kosName: kos.name,
+      ownerPhone: kos.ownerPhone,
+      pricePerMonth: kos.pricePerMonth,
+      bookingDate: new Date().toISOString().split('T')[0],
+    };
+
+    // Save to localStorage for now (in real app, would save to database)
+    const existingBookings = JSON.parse(localStorage.getItem("userBookings") || "[]");
+    existingBookings.push(bookingData);
+    localStorage.setItem("userBookings", JSON.stringify(existingBookings));
+
     toast({
-      title: "Booking Process",
-      description: `Menghubungi pemilik kos ${kos.name}. Silakan hubungi ${kos.ownerPhone}`,
+      title: "Booking Berhasil!",
+      description: `Booking untuk ${kos.name} telah dikonfirmasi. Hubungi pemilik di ${kos.ownerPhone}`,
     });
   };
 
