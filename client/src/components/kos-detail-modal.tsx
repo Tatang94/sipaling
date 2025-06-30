@@ -245,7 +245,7 @@ export default function KosDetailModal({ kos, isOpen, onClose, onBook }: KosDeta
             {/* Extra padding to ensure content can be scrolled */}
             <div className="h-4"></div>
             </div>
-        </ScrollArea>
+          </div>
         </ScrollArea>
 
         {/* Pricing & Booking */}
