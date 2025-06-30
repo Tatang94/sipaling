@@ -53,7 +53,7 @@ function Router() {
 
   return (
     <Switch>
-      <Route path="/" component={DashboardPage} />
+      <Route path="/" component={Home} />
       <Route path="/home" component={Home} />
       <Route path="/search" component={Search} />
       <Route path="/login" component={LoginPage} />
