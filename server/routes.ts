@@ -8,6 +8,7 @@ import { z } from "zod";
 import multer from "multer";
 import path from "path";
 import fs from "fs/promises";
+import bcrypt from "bcryptjs";
 
 // Configure multer for file uploads
 const storage_config = multer.diskStorage({
@@ -858,6 +859,92 @@ Mohon segera lakukan pembayaran melalui aplikasi atau hubungi kami. Terima kasih
     } catch (error) {
       console.error("Error getting scraping status:", error);
       res.status(500).json({ error: "Failed to get scraping status" });
+    }
+  });
+
+  // Face-only authentication endpoints
+  app.post("/api/auth/register-face", async (req, res) => {
+    try {
+      const { userData, faceData } = req.body;
+      
+      if (!userData || !faceData) {
+        return res.status(400).json({ error: "User data and face data are required" });
+      }
+
+      // Create user with face data (no password needed)
+      const hashedPassword = await bcrypt.hash(Math.random().toString(36), 10); // Random password as fallback
+      
+      const newUser = await storage.createUser({
+        name: userData.name,
+        email: `${userData.phone}@sipaling.kost`, // Use phone as email
+        password: hashedPassword,
+        phone: userData.phone,
+        role: userData.role,
+        faceData: faceData,
+        faceRegistered: true
+      });
+
+      res.json({
+        success: true,
+        message: "Account created successfully with face verification",
+        user: {
+          id: newUser.id,
+          name: newUser.name,
+          phone: newUser.phone,
+          role: newUser.role,
+          faceRegistered: true
+        },
+        token: "demo-token"
+      });
+    } catch (error) {
+      console.error("Error creating face account:", error);
+      res.status(500).json({ error: "Failed to create account" });
+    }
+  });
+
+  app.post("/api/auth/face-login", async (req, res) => {
+    try {
+      const { faceData } = req.body;
+      
+      if (!faceData) {
+        return res.status(400).json({ error: "Face data is required" });
+      }
+
+      // Find all users with face registration
+      const allUsers = await storage.getAllUsers();
+      const usersWithFace = allUsers.filter(user => user.faceRegistered && user.faceData);
+      
+      // Try to match face with registered users
+      let matchedUser = null;
+      for (const user of usersWithFace) {
+        const isMatch = await storage.verifyUserFace(user.id, faceData);
+        if (isMatch) {
+          matchedUser = user;
+          break;
+        }
+      }
+
+      if (!matchedUser) {
+        return res.status(401).json({ 
+          error: "Wajah tidak dikenali. Pastikan Anda sudah terdaftar atau coba ambil foto yang lebih jelas." 
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Face login successful",
+        user: {
+          id: matchedUser.id,
+          name: matchedUser.name,
+          phone: matchedUser.phone,
+          role: matchedUser.role,
+          faceRegistered: true
+        },
+        token: "demo-token"
+      });
+    } catch (error) {
+      console.error("Error in face login:", error);
+      res.status(500).json({ error: "Failed to verify face" });
     }
   });
 

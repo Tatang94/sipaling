@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Home, Search, HelpCircle, Info, Menu, User, MapPin } from "lucide-react";
+import { Home, Search, HelpCircle, Info, Menu, User, MapPin, Scan, UserPlus } from "lucide-react";
 
 export default function Navigation() {
   const [location] = useLocation();
@@ -49,6 +49,21 @@ export default function Navigation() {
 
           {/* User Actions */}
           <div className="flex items-center space-x-4">
+            {/* Face Login/Register Buttons */}
+            <div className="hidden md:flex items-center space-x-2">
+              <Link href="/face-login">
+                <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10">
+                  <Scan className="w-4 h-4 mr-2" />
+                  Login Wajah
+                </Button>
+              </Link>
+              <Link href="/face-register">
+                <Button size="sm" className="bg-primary hover:bg-primary/90">
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Daftar
+                </Button>
+              </Link>
+            </div>
             
             {/* Mobile Menu Button */}
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -77,6 +92,26 @@ export default function Navigation() {
                       </Link>
                     );
                   })}
+                  
+                  {/* Mobile Face Auth Buttons */}
+                  <div className="border-t pt-4">
+                    <Link
+                      href="/face-login"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center space-x-3 px-3 py-2 text-base font-medium rounded-lg text-primary hover:bg-primary/10 transition-colors"
+                    >
+                      <Scan className="w-5 h-5" />
+                      <span>Login dengan Wajah</span>
+                    </Link>
+                    <Link
+                      href="/face-register"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center space-x-3 px-3 py-2 text-base font-medium rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors mt-2"
+                    >
+                      <UserPlus className="w-5 h-5" />
+                      <span>Daftar Akun Baru</span>
+                    </Link>
+                  </div>
 
                 </div>
               </SheetContent>

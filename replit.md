@@ -189,6 +189,11 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - June 30, 2025: Created face verification modal with real-time camera access
 - June 30, 2025: Updated database schema to store encrypted face data
 - June 30, 2025: Integrated face verification into login flow with fallback options
+- June 30, 2025: Completely eliminated email/password authentication system
+- June 30, 2025: Implemented pure biometric authentication using face-only login/registration
+- June 30, 2025: Updated navigation and onboarding to use face authentication exclusively
+- June 30, 2025: Created face-register and face-login pages with camera integration
+- June 30, 2025: Added API endpoints for face-only registration and login (/api/auth/register-face, /api/auth/face-login)
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

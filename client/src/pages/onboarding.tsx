@@ -19,13 +19,13 @@ export default function OnboardingPage() {
     
     toast({
       title: "Peran Dipilih!",
-      description: `Anda masuk sebagai ${role === "seeker" ? "Pencari Kos" : "Pemilik Kos"}`,
+      description: `Silakan login dengan verifikasi wajah sebagai ${role === "seeker" ? "Pencari Kos" : "Pemilik Kos"}`,
     });
 
-    // Navigate to home after selection
+    // Navigate to face authentication after selection
     setTimeout(() => {
-      setLocation("/");
-    }, 1500);
+      setLocation("/face-login");
+    }, 2000);
   };
 
   const handleSkip = () => {

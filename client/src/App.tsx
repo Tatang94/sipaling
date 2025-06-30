@@ -9,6 +9,8 @@ import Search from "@/pages/search";
 import CariLokasiPage from "@/pages/cari-lokasi";
 import NearbyKosPage from "@/pages/nearby-kos";
 import LoginPage from "@/pages/login";
+import FaceLoginPage from "@/pages/face-login";
+import FaceRegisterPage from "@/pages/face-register";
 import DashboardPage from "@/pages/dashboard";
 import ProfilePage from "@/pages/profile";
 import BantuanPage from "@/pages/bantuan";
@@ -71,6 +73,8 @@ function Router() {
       <Route path="/cari-lokasi" component={CariLokasiPage} />
       <Route path="/nearby" component={NearbyKosPage} />
       <Route path="/login" component={LoginPage} />
+      <Route path="/face-login" component={FaceLoginPage} />
+      <Route path="/face-register" component={FaceRegisterPage} />
       <Route path="/dashboard" component={DashboardPage} />
       <Route path="/profile" component={ProfilePage} />
       <Route path="/payment" component={PaymentPage} />
