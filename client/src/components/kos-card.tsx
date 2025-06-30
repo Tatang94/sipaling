@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, MapPin, Star } from "lucide-react";
+import { Heart, MapPin, Star, Phone, ChevronLeft, ChevronRight } from "lucide-react";
 import { type Kos } from "@shared/schema";
 import { formatPrice, formatRating } from "@/lib/utils";
 
@@ -14,6 +14,28 @@ interface KosCardProps {
 
 export default function KosCard({ kos, onViewDetails, onBook }: KosCardProps) {
   const [isFavorited, setIsFavorited] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const nextImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => 
+      prev === kos.images.length - 1 ? 0 : prev + 1
+    );
+  };
+
+  const prevImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => 
+      prev === 0 ? kos.images.length - 1 : prev - 1
+    );
+  };
+
+  const handleWhatsAppContact = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const message = `Halo, saya tertarik dengan ${kos.name} di ${kos.address}. Apakah masih tersedia?`;
+    const whatsappUrl = `https://wa.me/${kos.ownerPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+  };
 
   const getStatusBadge = () => {
     if (!kos.isAvailable || kos.availableRooms === 0) {
@@ -46,11 +68,46 @@ export default function KosCard({ kos, onViewDetails, onBook }: KosCardProps) {
     <Card className="overflow-hidden hover:shadow-xl transition-shadow duration-300 group">
       <div className="relative">
         <img
-          src={kos.images[0]}
-          alt={kos.name}
+          src={kos.images[currentImageIndex] || kos.images[0]}
+          alt={`${kos.name} - Foto ${currentImageIndex + 1}`}
           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
-          onClick={() => onBook(kos)}
+          onClick={() => onViewDetails(kos)}
         />
+        
+        {/* Image slider controls */}
+        {kos.images && kos.images.length > 1 && (
+          <>
+            <Button
+              variant="secondary"
+              size="icon"
+              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white w-8 h-8"
+              onClick={prevImage}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="secondary"
+              size="icon"
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white w-8 h-8"
+              onClick={nextImage}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+            
+            {/* Image indicators */}
+            <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
+              {kos.images.map((_, index) => (
+                <div
+                  key={index}
+                  className={`w-2 h-2 rounded-full ${
+                    index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                  }`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
         <div className="absolute top-4 left-4">
           {getStatusBadge()}
         </div>
@@ -100,22 +157,38 @@ export default function KosCard({ kos, onViewDetails, onBook }: KosCardProps) {
           )}
         </div>
         
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-2xl font-bold text-primary">
-              {formatPrice(kos.pricePerMonth)}
-            </span>
-            <span className="text-gray-500 text-sm">/bulan</span>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-2xl font-bold text-primary">
+                {formatPrice(kos.pricePerMonth)}
+              </span>
+              <span className="text-gray-500 text-sm">/bulan</span>
+            </div>
+            <div className="text-sm text-gray-600">
+              <span className="font-medium">{kos.ownerName}</span>
+            </div>
           </div>
-          <Button 
-            className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              onBook(kos);
-            }}
-          >
-            Book Now
-          </Button>
+          
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              className="flex-1 bg-green-50 border-green-500 text-green-700 hover:bg-green-100"
+              onClick={handleWhatsAppContact}
+            >
+              <Phone className="w-4 h-4 mr-2" />
+              WhatsApp
+            </Button>
+            <Button 
+              className="flex-1 bg-primary hover:bg-primary/90 text-white"
+              onClick={(e) => {
+                e.stopPropagation();
+                onBook(kos);
+              }}
+            >
+              Book Now
+            </Button>
+          </div>
         </div>
       </div>
     </Card>

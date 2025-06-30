@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Star, Heart, MapPin, X, Wifi, Car, Utensils, AirVent, Tv, Bath, Shield, Coffee } from "lucide-react";
+import { Star, Heart, MapPin, X, Wifi, Car, Utensils, AirVent, Tv, Bath, Shield, Coffee, ChevronLeft, ChevronRight, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { formatPrice, formatRating } from "@/lib/utils";
@@ -29,10 +29,29 @@ const facilityIcons: Record<string, any> = {
 
 export default function KosDetailModal({ kos, isOpen, onClose, onBook }: KosDetailModalProps) {
   const [isFavorited, setIsFavorited] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
   if (!kos) return null;
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => 
+      prev === kos.images.length - 1 ? 0 : prev + 1
+    );
+  };
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => 
+      prev === 0 ? kos.images.length - 1 : prev - 1
+    );
+  };
+
+  const handleWhatsAppContact = () => {
+    const message = `Halo ${kos.ownerName}, saya tertarik dengan ${kos.name} di ${kos.address}. Apakah masih tersedia? Terima kasih.`;
+    const whatsappUrl = `https://wa.me/${kos.ownerPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+  };
 
   const handleBook = () => {
     // Check if user is logged in (simple check for demo)
@@ -107,11 +126,56 @@ export default function KosDetailModal({ kos, isOpen, onClose, onBook }: KosDeta
         </DialogHeader>
 
         <ScrollArea className="flex-1 overflow-y-auto">
-          <div className="p-3 space-y-3 pb-4">
-            {/* Description */}
-            <div id="kos-description">
-              <p className="text-gray-600 leading-relaxed">{kos.description}</p>
+          <div className="space-y-3 pb-4">
+            {/* Image Gallery */}
+            <div className="relative">
+              <img
+                src={kos.images[currentImageIndex] || kos.images[0]}
+                alt={`${kos.name} - Foto ${currentImageIndex + 1}`}
+                className="w-full h-48 sm:h-64 object-cover"
+              />
+              
+              {/* Image carousel controls */}
+              {kos.images && kos.images.length > 1 && (
+                <>
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white w-8 h-8"
+                    onClick={prevImage}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white w-8 h-8"
+                    onClick={nextImage}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                  
+                  {/* Image indicators */}
+                  <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
+                    {kos.images.map((_, index) => (
+                      <button
+                        key={index}
+                        className={`w-2 h-2 rounded-full ${
+                          index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                        }`}
+                        onClick={() => setCurrentImageIndex(index)}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
+
+            <div className="p-3 space-y-3">
+              {/* Description */}
+              <div id="kos-description">
+                <p className="text-gray-600 leading-relaxed">{kos.description}</p>
+              </div>
 
             {/* Lokasi */}
             <div>
@@ -180,7 +244,8 @@ export default function KosDetailModal({ kos, isOpen, onClose, onBook }: KosDeta
             
             {/* Extra padding to ensure content can be scrolled */}
             <div className="h-4"></div>
-          </div>
+            </div>
+        </ScrollArea>
         </ScrollArea>
 
         {/* Pricing & Booking */}
@@ -200,13 +265,23 @@ export default function KosDetailModal({ kos, isOpen, onClose, onBook }: KosDeta
             </Button>
           </div>
           
-          <Button 
-            className="w-full bg-primary hover:bg-primary/90 text-white py-2 rounded-lg font-medium transition-colors text-sm"
-            onClick={handleBook}
-            disabled={!kos.isAvailable || kos.availableRooms === 0}
-          >
-            {kos.isAvailable && kos.availableRooms > 0 ? "Book Sekarang" : "Tidak Tersedia"}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              className="flex-1 bg-green-50 border-green-500 text-green-700 hover:bg-green-100 py-2 rounded-lg font-medium transition-colors text-sm"
+              onClick={handleWhatsAppContact}
+            >
+              <Phone className="w-4 h-4 mr-2" />
+              WhatsApp
+            </Button>
+            <Button 
+              className="flex-1 bg-primary hover:bg-primary/90 text-white py-2 rounded-lg font-medium transition-colors text-sm"
+              onClick={handleBook}
+              disabled={!kos.isAvailable || kos.availableRooms === 0}
+            >
+              {kos.isAvailable && kos.availableRooms > 0 ? "Book Sekarang" : "Tidak Tersedia"}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
