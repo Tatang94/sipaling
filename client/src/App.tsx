@@ -7,6 +7,7 @@ import OnboardingPage from "@/pages/onboarding";
 import Home from "@/pages/home";
 import Search from "@/pages/search";
 import CariLokasiPage from "@/pages/cari-lokasi";
+import NearbyKosPage from "@/pages/nearby-kos";
 import LoginPage from "@/pages/login";
 import DashboardPage from "@/pages/dashboard";
 import ProfilePage from "@/pages/profile";
@@ -67,6 +68,7 @@ function Router() {
       <Route path="/home" component={Home} />
       <Route path="/search" component={Search} />
       <Route path="/cari-lokasi" component={CariLokasiPage} />
+      <Route path="/nearby" component={NearbyKosPage} />
       <Route path="/login" component={LoginPage} />
       <Route path="/dashboard" component={DashboardPage} />
       <Route path="/profile" component={ProfilePage} />

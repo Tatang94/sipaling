@@ -61,6 +61,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get nearby kos based on GPS coordinates
+  app.get("/api/kos/nearby", async (req, res) => {
+    try {
+      const { lat, lng, radius = 10, limit = 20 } = req.query;
+      
+      if (!lat || !lng) {
+        return res.status(400).json({ message: "Latitude and longitude are required" });
+      }
+      
+      const userLat = parseFloat(lat as string);
+      const userLng = parseFloat(lng as string);
+      const maxRadius = parseFloat(radius as string);
+      const maxResults = parseInt(limit as string);
+      
+      // Helper function to calculate distance using Haversine formula
+      const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+        const R = 6371; // Earth's radius in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+          Math.sin(dLng/2) * Math.sin(dLng/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+      };
+      
+      // Get all kos and calculate distances
+      const allKos = await storage.getAllKos();
+      const nearbyKos = allKos
+        .filter(kos => kos.latitude && kos.longitude)
+        .map(kos => {
+          const kosLat = parseFloat(kos.latitude);
+          const kosLng = parseFloat(kos.longitude);
+          const distance = calculateDistance(userLat, userLng, kosLat, kosLng);
+          
+          return {
+            ...kos,
+            distance: Math.round(distance * 100) / 100 // Round to 2 decimal places
+          };
+        })
+        .filter(kos => kos.distance <= maxRadius)
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, maxResults);
+      
+      res.json(nearbyKos);
+    } catch (error) {
+      console.error("Error fetching nearby kos:", error);
+      res.status(500).json({ message: "Failed to fetch nearby kos" });
+    }
+  });
+
   // Search kos
   app.get("/api/kos/search", async (req, res) => {
     try {
@@ -194,9 +245,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get kos by ID (placed after search to avoid route conflicts)
+  // Get kos by ID (placed after all specific routes to avoid conflicts)
   app.get("/api/kos/:id", async (req, res) => {
     try {
+      // Skip if this is actually a path like 'nearby'
+      if (req.params.id === 'nearby' || req.params.id === 'featured' || req.params.id === 'search') {
+        return res.status(404).json({ message: "Route not found" });
+      }
+      
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid kos ID" });

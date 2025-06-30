@@ -132,37 +132,27 @@ export default function LocationMap({ onLocationSelect, showKosLocations = false
     setLoading(false);
   };
 
-  // Cari kos terdekat dari database API
+  // Cari kos terdekat menggunakan GPS API endpoint
   const searchNearbyKos = async (lat: number, lng: number) => {
     try {
-      // Fetch real kos data from database
-      const response = await fetch('/api/kos/featured');
-      const kosData = await response.json();
+      // Fetch nearby kos using GPS coordinates
+      const response = await fetch(`/api/kos/nearby?lat=${lat}&lng=${lng}&radius=10&limit=15`);
+      const nearbyKosData = await response.json();
       
-      if (kosData && Array.isArray(kosData)) {
-        // Filter and calculate distance for nearby kos
-        const nearbyKos = kosData
-          .filter((kos: any) => kos.latitude && kos.longitude)
-          .map((kos: any) => {
-            const kosLat = parseFloat(kos.latitude);
-            const kosLng = parseFloat(kos.longitude);
-            const distance = calculateDistance(lat, lng, kosLat, kosLng);
-            
-            return {
-              id: kos.id,
-              name: kos.name,
-              latitude: kosLat,
-              longitude: kosLng,
-              price: parseFloat(kos.pricePerMonth || '0'),
-              type: kos.type,
-              distance
-            };
-          })
-          .filter((kos: any) => kos.distance <= 5) // Within 5km radius
-          .sort((a: any, b: any) => a.distance - b.distance)
-          .slice(0, 10); // Show top 10 nearest
+      if (nearbyKosData && Array.isArray(nearbyKosData)) {
+        const kosWithLocation = nearbyKosData.map((kos: any) => ({
+          id: kos.id,
+          name: kos.name,
+          latitude: parseFloat(kos.latitude),
+          longitude: parseFloat(kos.longitude),
+          price: parseFloat(kos.pricePerMonth || '0'),
+          type: kos.type,
+          distance: kos.distance,
+          rating: kos.rating,
+          availableRooms: kos.availableRooms
+        }));
 
-        setKosLocations(nearbyKos);
+        setKosLocations(kosWithLocation);
       }
     } catch (error) {
       console.error('Error fetching nearby kos:', error);

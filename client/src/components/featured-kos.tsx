@@ -1,22 +1,78 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import KosCard from "./kos-card";
 import KosDetailModal from "./kos-detail-modal";
 import { type Kos } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { Navigation, MapPin } from "lucide-react";
+
+interface NearbyKos extends Kos {
+  distance?: number;
+}
 
 export default function FeaturedKos() {
   const [selectedKos, setSelectedKos] = useState<Kos | null>(null);
   const [filterType, setFilterType] = useState("semua");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [nearbyKos, setNearbyKos] = useState<NearbyKos[]>([]);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
 
-  const { data: kosList, isLoading } = useQuery<Kos[]>({
+  // Get featured kos (fallback)
+  const { data: featuredKosList, isLoading: isFeaturedLoading } = useQuery<Kos[]>({
     queryKey: ["/api/kos/featured"],
   });
+
+  // Get user location automatically
+  useEffect(() => {
+    setIsGettingLocation(true);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          setUserLocation({ lat, lng });
+          fetchNearbyKos(lat, lng);
+        },
+        (error) => {
+          console.error('GPS error:', error);
+          setIsGettingLocation(false);
+          // Use featured kos as fallback
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 60000
+        }
+      );
+    } else {
+      setIsGettingLocation(false);
+    }
+  }, []);
+
+  // Fetch nearby kos based on GPS
+  const fetchNearbyKos = async (lat: number, lng: number) => {
+    try {
+      const response = await fetch(`/api/kos/nearby?lat=${lat}&lng=${lng}&radius=20&limit=12`);
+      const data = await response.json();
+      
+      if (data && Array.isArray(data) && data.length > 0) {
+        setNearbyKos(data);
+      }
+    } catch (error) {
+      console.error('Error fetching nearby kos:', error);
+    }
+    setIsGettingLocation(false);
+  };
+
+  // Use nearby kos if available, otherwise use featured kos
+  const kosList = nearbyKos.length > 0 ? nearbyKos : featuredKosList || [];
+  const isLoading = isGettingLocation || (nearbyKos.length === 0 && isFeaturedLoading);
 
   const filteredKos = kosList?.filter(kos => {
     if (filterType === "semua") return true;
@@ -124,12 +180,30 @@ export default function FeaturedKos() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12">
           <div>
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
-              Kos Rekomendasi
-            </h2>
+            <div className="flex items-center gap-2 mb-2">
+              {userLocation && (
+                <MapPin className="w-5 h-5 text-teal-600" />
+              )}
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
+                {nearbyKos.length > 0 ? 'Kos Terdekat' : 'Kos Rekomendasi'}
+              </h2>
+            </div>
             <p className="text-gray-600">
-              Pilihan terbaik dengan fasilitas lengkap dan lokasi strategis
+              {nearbyKos.length > 0 
+                ? `Ditemukan ${nearbyKos.length} kos terdekat dari lokasi Anda`
+                : 'Pilihan terbaik dengan fasilitas lengkap dan lokasi strategis'
+              }
             </p>
+            {nearbyKos.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLocation('/nearby')}
+                className="mt-2 text-teal-600 border-teal-600 hover:bg-teal-50"
+              >
+                Lihat Semua Kos Terdekat
+              </Button>
+            )}
           </div>
           
           {/* Filter Tabs */}
