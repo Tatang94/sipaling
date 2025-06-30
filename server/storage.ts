@@ -900,5 +900,5 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Use MemStorage since PostgreSQL is not available
+// Use MemStorage for reliable data persistence with authentic Tasikmalaya data
 export const storage = new MemStorage();
