@@ -49,22 +49,17 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   private db: any;
-  
+
   constructor() {
     this.db = db;
   }
-  
-  // User operations
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const hashedPassword = await bcrypt.hash(insertUser.password, 10);
-    const [newUser] = await this.db
-      .insert(users)
-      .values({
-        ...insertUser,
-        password: hashedPassword,
-      })
+    const [user] = await this.db.insert(users)
+      .values({ ...insertUser, password: hashedPassword })
       .returning();
-    return newUser;
+    return user;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
@@ -90,12 +85,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUserFaceData(userId: number, faceData: string): Promise<User | undefined> {
-    const [updatedUser] = await this.db
-      .update(users)
-      .set({ 
-        faceData: faceData, 
-        faceRegistered: true 
-      })
+    const [updatedUser] = await this.db.update(users)
+      .set({ faceData })
       .where(eq(users.id, userId))
       .returning();
     return updatedUser || undefined;
@@ -103,17 +94,15 @@ export class DatabaseStorage implements IStorage {
 
   async verifyUserFace(userId: number, capturedFaceData: string): Promise<boolean> {
     const user = await this.getUserById(userId);
-    if (!user || !user.faceData || !user.faceRegistered) {
-      return false;
-    }
-
-    // Simulasi algoritma face matching
+    if (!user || !user.faceData) return false;
+    
+    // Simple face matching simulation for demo
     try {
       const storedFaceData = JSON.parse(atob(user.faceData));
       const capturedData = JSON.parse(atob(capturedFaceData));
       
-      // Simulasi similarity check dengan threshold 80%
-      const similarity = Math.random() * 0.4 + 0.6; // 60-100% untuk demo
+      // Simulate similarity check with threshold 80%
+      const similarity = Math.random() * 0.4 + 0.6; // 60-100% for demo
       return similarity > 0.8;
     } catch (error) {
       console.error('Face verification error:', error);
@@ -121,23 +110,32 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Kos operations
   async getKos(id: number): Promise<Kos | undefined> {
-    const [kosData] = await this.db.select().from(kos).where(eq(kos.id, id));
-    return kosData || undefined;
+    const [kosItem] = await this.db.select().from(kos).where(eq(kos.id, id));
+    return kosItem || undefined;
   }
 
   async getAllKos(): Promise<Kos[]> {
-    return await this.db.select().from(kos);
+    return await this.db.select().from(kos).where(eq(kos.isAvailable, true));
   }
 
   async getKosByCity(city: string): Promise<Kos[]> {
-    return await this.db.select().from(kos).where(eq(kos.city, city.toLowerCase()));
+    return await this.db.select()
+      .from(kos)
+      .where(and(
+        ilike(kos.city, `%${city}%`),
+        eq(kos.isAvailable, true)
+      ));
   }
 
   async getKosByType(type: string): Promise<Kos[]> {
     if (type === "semua") return this.getAllKos();
-    return await this.db.select().from(kos).where(eq(kos.type, type.toLowerCase()));
+    return await this.db.select()
+      .from(kos)
+      .where(and(
+        eq(kos.type, type),
+        eq(kos.isAvailable, true)
+      ));
   }
 
   async getKosByOwner(ownerId: number): Promise<Kos[]> {
@@ -145,46 +143,41 @@ export class DatabaseStorage implements IStorage {
   }
 
   async searchKos(query: string, city?: string, minPrice?: number, maxPrice?: number): Promise<Kos[]> {
-    // For simplicity, we'll get all and filter in memory for complex queries
-    const allKos = await this.db.select().from(kos);
-    
+    const allKos = await this.getAllKos();
     return allKos.filter((k: Kos) => {
       const matchesQuery = !query || 
         k.name.toLowerCase().includes(query.toLowerCase()) ||
         k.description.toLowerCase().includes(query.toLowerCase()) ||
         k.address.toLowerCase().includes(query.toLowerCase());
       
-      const matchesCity = !city || k.city.toLowerCase() === city.toLowerCase();
+      const matchesCity = !city || k.city.toLowerCase().includes(city.toLowerCase());
       
       const price = parseFloat(k.pricePerMonth);
       const matchesPrice = (!minPrice || price >= minPrice) && (!maxPrice || price <= maxPrice);
       
-      return matchesQuery && matchesCity && matchesPrice && k.isAvailable;
+      return matchesQuery && matchesCity && matchesPrice;
     });
   }
 
   async getFeaturedKos(): Promise<Kos[]> {
-    const allKos = await this.db.select().from(kos);
-    return allKos
-      .filter(k => k.isAvailable)
-      .sort((a, b) => {
-        if (a.isPromoted && !b.isPromoted) return -1;
-        if (!a.isPromoted && b.isPromoted) return 1;
-        return parseFloat(b.rating) - parseFloat(a.rating);
-      });
+    return await this.db.select()
+      .from(kos)
+      .where(and(
+        eq(kos.isPromoted, true),
+        eq(kos.isAvailable, true)
+      ))
+      .limit(6);
   }
 
   async createKos(insertKos: InsertKos): Promise<Kos> {
-    const [newKos] = await this.db
-      .insert(kos)
+    const [kosItem] = await this.db.insert(kos)
       .values(insertKos)
       .returning();
-    return newKos;
+    return kosItem;
   }
 
   async updateKos(id: number, updateData: Partial<InsertKos>): Promise<Kos | undefined> {
-    const [updatedKos] = await this.db
-      .update(kos)
+    const [updatedKos] = await this.db.update(kos)
       .set(updateData)
       .where(eq(kos.id, id))
       .returning();
@@ -197,11 +190,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBooking(insertBooking: InsertBooking): Promise<Booking> {
-    const [newBooking] = await this.db
-      .insert(bookings)
+    const [booking] = await this.db.insert(bookings)
       .values(insertBooking)
       .returning();
-    return newBooking;
+    return booking;
   }
 
   async getBookingsByKos(kosId: number): Promise<Booking[]> {
@@ -213,40 +205,36 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getBookingsByOwner(ownerId: number): Promise<Booking[]> {
-    const ownerKos = await this.getKosByOwner(ownerId);
-    const kosIds = ownerKos.map(k => k.id);
-    if (kosIds.length === 0) return [];
-    
-    return await this.db.select().from(bookings).where(
-      or(...kosIds.map(id => eq(bookings.kosId, id)))
-    );
+    return await this.db.select()
+      .from(bookings)
+      .innerJoin(kos, eq(bookings.kosId, kos.id))
+      .where(eq(kos.ownerId, ownerId));
   }
 
   async updateBookingStatus(id: number, status: string): Promise<Booking | undefined> {
-    const [updatedBooking] = await this.db
-      .update(bookings)
+    const [updatedBooking] = await this.db.update(bookings)
       .set({ status })
       .where(eq(bookings.id, id))
       .returning();
     return updatedBooking || undefined;
   }
 
-  // Room operations
   async createRoom(insertRoom: InsertRoom): Promise<Room> {
-    const [newRoom] = await this.db
-      .insert(rooms)
+    const [room] = await this.db.insert(rooms)
       .values(insertRoom)
       .returning();
-    return newRoom;
+    return room;
   }
 
   async getRoomsByOwner(ownerId: number): Promise<Room[]> {
-    return await this.db.select().from(rooms).where(eq(rooms.ownerId, ownerId));
+    return await this.db.select()
+      .from(rooms)
+      .innerJoin(kos, eq(rooms.kosId, kos.id))
+      .where(eq(kos.ownerId, ownerId));
   }
 
   async updateRoom(id: number, updateData: Partial<InsertRoom>): Promise<Room | undefined> {
-    const [updatedRoom] = await this.db
-      .update(rooms)
+    const [updatedRoom] = await this.db.update(rooms)
       .set(updateData)
       .where(eq(rooms.id, id))
       .returning();
@@ -258,7 +246,6 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount || 0) > 0;
   }
 
-  // Payment operations
   async createPayment(insertPayment: InsertPayment): Promise<Payment> {
     const [payment] = await this.db.insert(payments)
       .values(insertPayment)
@@ -337,21 +324,18 @@ export class MemStorage implements IStorage {
     this.currentBookingId = 1;
     this.currentPaymentId = 1;
     
-    // Initialize with sample data
-    this.initializeData();
+    // Database kosong - tidak ada data sample
+    // Empty database - no sample data initialized
   }
 
-  // User operations (stub implementations for MemStorage)
   async createUser(insertUser: InsertUser): Promise<User> {
     const hashedPassword = await bcrypt.hash(insertUser.password, 10);
     const user: User = {
       id: this.currentUserId++,
       ...insertUser,
       password: hashedPassword,
-      phone: insertUser.phone || null,
-      faceData: null,
-      faceRegistered: false,
       createdAt: new Date(),
+      updatedAt: new Date()
     };
     this.usersList.set(user.id, user);
     return user;
@@ -380,30 +364,27 @@ export class MemStorage implements IStorage {
   async updateUserFaceData(userId: number, faceData: string): Promise<User | undefined> {
     const user = this.usersList.get(userId);
     if (!user) return undefined;
-    
+
     const updatedUser: User = {
       ...user,
-      faceData: faceData,
-      faceRegistered: true
+      faceData,
+      updatedAt: new Date()
     };
-    
     this.usersList.set(userId, updatedUser);
     return updatedUser;
   }
 
   async verifyUserFace(userId: number, capturedFaceData: string): Promise<boolean> {
     const user = this.usersList.get(userId);
-    if (!user || !user.faceData || !user.faceRegistered) {
-      return false;
-    }
-
-    // Simulasi algoritma face matching untuk MemStorage
+    if (!user || !user.faceData) return false;
+    
+    // Simple face matching simulation for demo
     try {
       const storedFaceData = JSON.parse(atob(user.faceData));
       const capturedData = JSON.parse(atob(capturedFaceData));
       
-      // Simulasi similarity check dengan threshold 80%
-      const similarity = Math.random() * 0.4 + 0.6; // 60-100% untuk demo
+      // Simulate similarity check with threshold 80%
+      const similarity = Math.random() * 0.4 + 0.6; // 60-100% for demo
       return similarity > 0.8;
     } catch (error) {
       console.error('Face verification error:', error);
@@ -411,553 +392,24 @@ export class MemStorage implements IStorage {
     }
   }
 
-  private initializeData() {
-    const sampleKos: InsertKos[] = [
-      {
-        name: "Kos Melati Hijau",
-        description: "Kos modern dengan fasilitas lengkap dekat Universitas Indonesia. Kamar nyaman dengan AC, WiFi, dan akses mudah ke transportasi umum.",
-        address: "Jl. Margonda Raya No. 123, Depok",
-        city: "jakarta",
-        pricePerMonth: "1200000",
-        type: "campur",
-        availableRooms: 3,
-        totalRooms: 20,
-        rating: "4.8",
-        reviewCount: 156,
-        facilities: ["WiFi", "AC", "Parkir", "Dapur", "Laundry", "Keamanan 24/7"],
-        images: [],
-        ownerName: "Ibu Sari",
-        ownerPhone: "+62 812 3456 7890",
-        latitude: "-6.3682",
-        longitude: "106.8347",
-        isAvailable: true,
-        isPromoted: true,
-        roomSize: "3x4 meter",
-        paymentType: "monthly"
-      },
-      {
-        name: "Kos Bintang Lima",
-        description: "Kos premium di kawasan Dago dengan suasana sejuk dan fasilitas mewah. Cocok untuk mahasiswa dan pekerja muda.",
-        address: "Jl. Dago No. 45, Bandung",
-        city: "bandung",
-        pricePerMonth: "950000",
-        type: "putri",
-        availableRooms: 2,
-        totalRooms: 15,
-        rating: "4.9",
-        reviewCount: 89,
-        facilities: ["WiFi", "AC", "Keamanan 24/7", "Laundry", "Dapur Bersama"],
-        images: [],
-        ownerName: "Bapak Ahmad",
-        ownerPhone: "+62 813 9876 5432",
-        latitude: "-6.8951",
-        longitude: "107.6084",
-        isAvailable: true,
-        isPromoted: false,
-        roomSize: "3x3 meter",
-        paymentType: "monthly"
-      },
-      {
-        name: "Kos Mahasiswa Sentral",
-        description: "Kos strategis dekat ITB Surabaya dengan harga terjangkau. Fasilitas lengkap dan lingkungan aman untuk mahasiswa.",
-        address: "Jl. Raya ITS No. 87, Surabaya",
-        city: "surabaya",
-        pricePerMonth: "750000",
-        type: "putra",
-        availableRooms: 5,
-        totalRooms: 25,
-        rating: "4.6",
-        reviewCount: 134,
-        facilities: ["WiFi", "Kamar Mandi Dalam", "Parkir Motor", "Ruang Belajar"],
-        images: [],
-        ownerName: "Ibu Rina",
-        ownerPhone: "+62 815 2468 1357",
-        latitude: "-7.2865",
-        longitude: "112.7957",
-        isAvailable: true,
-        isPromoted: false,
-        roomSize: "3x3 meter",
-        paymentType: "monthly"
-      },
-      {
-        name: "Kos Executive Plaza",
-        description: "Kos mewah di pusat kota Yogyakarta dengan fasilitas premium. Dilengkapi gym, cafe, dan WiFi super cepat.",
-        address: "Jl. Malioboro No. 234, Yogyakarta",
-        city: "yogyakarta",
-        pricePerMonth: "2500000",
-        type: "campur",
-        availableRooms: 1,
-        totalRooms: 10,
-        rating: "5.0",
-        reviewCount: 45,
-        facilities: ["WiFi 100Mbps", "AC", "Gym", "Cafe", "Laundry Premium", "Keamanan 24/7"],
-        images: [],
-        ownerName: "Pak Budi",
-        ownerPhone: "+62 814 7890 1234",
-        latitude: "-7.7956",
-        longitude: "110.3695",
-        isAvailable: true,
-        isPromoted: true,
-        roomSize: "4x5 meter",
-        paymentType: "monthly"
-      },
-      {
-        name: "Kos Putri Aman",
-        description: "Kos khusus putri dengan keamanan tinggi di kawasan Sudirman Jakarta. Lingkungan bersih dan nyaman.",
-        address: "Jl. Sudirman No. 567, Jakarta",
-        city: "jakarta",
-        pricePerMonth: "1800000",
-        type: "putri",
-        availableRooms: 4,
-        totalRooms: 18,
-        rating: "4.7",
-        reviewCount: 92,
-        facilities: ["Keamanan 24/7", "Khusus Putri", "Dapur Bersama", "WiFi", "AC"],
-        images: [],
-        ownerName: "Ibu Dewi",
-        ownerPhone: "+62 816 5432 8765",
-        latitude: "-6.2088",
-        longitude: "106.8456",
-        isAvailable: true,
-        isPromoted: false,
-        roomSize: "3x4 meter",
-        paymentType: "monthly"
-      },
-      {
-        name: "Kos Kampus Center",
-        description: "Kos dekat UGM dengan jarak tempuh hanya 200 meter. Cocok untuk mahasiswa dengan budget terbatas.",
-        address: "Jl. Kaliurang KM 5, Yogyakarta",
-        city: "yogyakarta",
-        pricePerMonth: "650000",
-        type: "campur",
-        availableRooms: 7,
-        totalRooms: 30,
-        rating: "4.5",
-        reviewCount: 178,
-        facilities: ["WiFi", "Ruang Belajar", "Parkir Motor", "Dapur Bersama"],
-        images: [],
-        ownerName: "Pak Joko",
-        ownerPhone: "+62 817 6543 2109",
-        latitude: "-7.7459",
-        longitude: "110.3779",
-        isAvailable: true,
-        isPromoted: false,
-        roomSize: "3x3 meter",
-        paymentType: "monthly"
-      },
-      // Complete Tasikmalaya kos data from Mamikos (15 kos from all districts)
-      // Tawang District - Premium Area
-      {
-        name: "Kost Lashira State Tipe A",
-        description: "Kos nyaman di Tawang dengan fasilitas lengkap dan lokasi strategis dekat pusat kota. Cocok untuk mahasiswa dan karyawan dengan akses 24 jam.",
-        type: "campur",
-        pricePerMonth: "850000",
-        city: "tasikmalaya",
-        address: "Jl. Tawang Raya No. 15, Tawang, Tasikmalaya, Jawa Barat",
-        latitude: "-7.3274",
-        longitude: "108.2085",
-        availableRooms: 1,
-        totalRooms: 5,
-        rating: "4.8",
-        reviewCount: 45,
-        facilities: ["Kamar Mandi Dalam", "WiFi", "Kasur", "Akses 24 Jam", "Lemari", "Meja Belajar"],
-        images: [],
-        ownerName: "Ibu Lashira",
-        ownerPhone: "+628123456789",
-        isAvailable: true,
-        isPromoted: true,
-        roomSize: "3x4 meter",
-        paymentType: "monthly"
-      },
-      {
-        name: "Kost Akala Home Tipe Yale",
-        description: "Kos premium dengan AC dan fasilitas mewah di Tawang. Lokasi strategis dengan kualitas terbaik untuk kenyamanan maksimal.",
-        type: "campur", 
-        pricePerMonth: "1600000",
-        city: "tasikmalaya",
-        address: "Jl. Kebon Tiwu 1 No. 25, Tawang, Tasikmalaya, Jawa Barat",
-        latitude: "-7.3268",
-        longitude: "108.2078",
-        availableRooms: 1,
-        totalRooms: 3,
-        rating: "4.9",
-        reviewCount: 32,
-        facilities: ["Kamar Mandi Dalam", "WiFi", "AC", "Kloset Duduk", "Kasur", "Akses 24 Jam", "Android TV", "Water Heater"],
-        images: [],
-        ownerName: "Bapak Akala",
-        ownerPhone: "+628234567890",
-        isAvailable: true,
-        isPromoted: true,
-        roomSize: "4x4 meter",
-        paymentType: "monthly"
-      },
-      {
-        name: "Kost White House",
-        description: "Kos putra dengan harga terjangkau di Tawang. Fasilitas standar dengan kebersihan terjaga dan suasana nyaman untuk mahasiswa.",
-        type: "putra",
-        pricePerMonth: "500000",
-        city: "tasikmalaya", 
-        address: "Jl. Tawang Indah No. 8, Tawang, Tasikmalaya, Jawa Barat",
-        latitude: "-7.3281",
-        longitude: "108.2091",
-        availableRooms: 3,
-        totalRooms: 8,
-        rating: "4.5",
-        reviewCount: 28,
-        facilities: ["Kamar Mandi Dalam", "WiFi", "Kasur", "Akses 24 Jam", "Lemari"],
-        images: [],
-        ownerName: "Bapak Hendra",
-        ownerPhone: "+628345678901",
-        isAvailable: true,
-        isPromoted: false,
-        roomSize: "3x3 meter",
-        paymentType: "monthly"
-      },
-      {
-        name: "Kost Yeni Hernawati VVIP",
-        description: "Kos putra VVIP dengan rating sempurna di Tawang. Fasilitas premium dengan pelayanan terbaik dan lokasi strategis dekat kampus.",
-        type: "putra",
-        pricePerMonth: "600000",
-        city: "tasikmalaya",
-        address: "Jl. Paledang No. 12, Tawang, Tasikmalaya, Jawa Barat",
-        latitude: "-7.3289",
-        longitude: "108.2105", 
-        availableRooms: 1,
-        totalRooms: 4,
-        rating: "5.0",
-        reviewCount: 52,
-        facilities: ["Kamar Mandi Dalam", "WiFi", "Kasur", "Meja Belajar", "Kursi", "Lemari"],
-        images: [],
-        ownerName: "Ibu Yeni Hernawati",
-        ownerPhone: "+628456789012",
-        isAvailable: true,
-        isPromoted: true,
-        roomSize: "3x4 meter",
-        paymentType: "monthly"
-      },
-      {
-        name: "Kost H Turyaman",
-        description: "Kost dekat dengan UNSIL dan pusat kota, pelayanan dan fasilitasnya sangat baik, dan tentu saja terjangkau bagi mahasiswa.",
-        type: "campur",
-        pricePerMonth: "750000",
-        city: "tasikmalaya",
-        address: "Jl. H. Turyaman No. 45, Tawang, Tasikmalaya, Jawa Barat",
-        latitude: "-7.3295",
-        longitude: "108.2098",
-        availableRooms: 2,
-        totalRooms: 10,
-        rating: "4.7",
-        reviewCount: 67,
-        facilities: ["WiFi", "Kamar Mandi Dalam", "Kasur", "Akses 24 Jam", "Parkir Motor"],
-        images: [],
-        ownerName: "Bapak H. Turyaman",
-        ownerPhone: "+628567890123",
-        isAvailable: true,
-        isPromoted: true,
-        roomSize: "3x3 meter",
-        paymentType: "monthly"
-      },
-      {
-        name: "Kost Mekarsari 1",
-        description: "Lokasi dekat dengan rumah makan, harga sesuai. Kos putra dengan fasilitas lengkap dan keamanan 24 jam.",
-        type: "putra",
-        pricePerMonth: "500000",
-        city: "tasikmalaya",
-        address: "Jl. Mekarsari 1 No. 20, Tawang, Tasikmalaya, Jawa Barat",
-        latitude: "-7.3301",
-        longitude: "108.2112",
-        availableRooms: 4,
-        totalRooms: 12,
-        rating: "4.6",
-        reviewCount: 89,
-        facilities: ["Kamar Mandi Dalam", "WiFi", "Kasur", "Akses 24 Jam", "Dapur Bersama"],
-        images: [],
-        ownerName: "Ibu Sari Mekarsari",
-        ownerPhone: "+628678901234",
-        isAvailable: true,
-        isPromoted: false,
-        roomSize: "3x3 meter",
-        paymentType: "monthly"
-      },
-      // Cihideung District - Student Area
-      {
-        name: "Kost Jasmine Tipe A",
-        description: "Kos putri eksklusif di Cihideung dengan fasilitas modern dan keamanan terjamin. Lingkungan bersih dan tenang untuk kenyamanan penghuni.",
-        type: "putri",
-        pricePerMonth: "850000",
-        city: "tasikmalaya",
-        address: "Jl. Cihideung Raya No. 30, Cihideung, Tasikmalaya, Jawa Barat", 
-        latitude: "-7.3156",
-        longitude: "108.2198",
-        availableRooms: 2,
-        totalRooms: 6,
-        rating: "4.7",
-        reviewCount: 38,
-        facilities: ["Kamar Mandi Dalam", "WiFi", "Kloset Duduk", "Kasur", "Lemari", "AC"],
-        images: [],
-        ownerName: "Ibu Jasmine",
-        ownerPhone: "+628789012345",
-        isAvailable: true,
-        isPromoted: true,
-        roomSize: "3x4 meter",
-        paymentType: "monthly"
-      },
-      {
-        name: "Kost Eksklusif Bu Ira VVIP",
-        description: "Bagus banget pemilik baik. Kos eksklusif dengan fasilitas premium dan keamanan 24 jam yang sangat nyaman.",
-        type: "putra",
-        pricePerMonth: "1200000",
-        city: "tasikmalaya",
-        address: "Jl. Cihideung Utara No. 15, Cihideung, Tasikmalaya, Jawa Barat",
-        latitude: "-7.3142",
-        longitude: "108.2205",
-        availableRooms: 1,
-        totalRooms: 5,
-        rating: "4.9",
-        reviewCount: 24,
-        facilities: ["Kamar Mandi Dalam", "WiFi", "AC", "TV", "Kasur", "Lemari", "Kulkas", "Security 24 Jam"],
-        images: [],
-        ownerName: "Ibu Ira",
-        ownerPhone: "+628890123456",
-        isAvailable: true,
-        isPromoted: true,
-        roomSize: "4x4 meter",
-        paymentType: "monthly"
-      },
-      {
-        name: "Kost Annisa Tipe B",
-        description: "Bersih, nyaman, cuma kadang ada bau yang tidak sedap. Kos putri dengan harga terjangkau dan fasilitas memadai.",
-        type: "putri",
-        pricePerMonth: "700000",
-        city: "tasikmalaya",
-        address: "Jl. Cihideung Selatan No. 22, Cihideung, Tasikmalaya, Jawa Barat",
-        latitude: "-7.3168",
-        longitude: "108.2183",
-        availableRooms: 3,
-        totalRooms: 8,
-        rating: "4.3",
-        reviewCount: 45,
-        facilities: ["Kamar Mandi Dalam", "WiFi", "Kasur", "Lemari", "Dapur Bersama"],
-        images: [],
-        ownerName: "Ibu Annisa",
-        ownerPhone: "+628901234567",
-        isAvailable: true,
-        isPromoted: false,
-        roomSize: "3x3 meter",
-        paymentType: "monthly"
-      },
-      {
-        name: "Kost Anugrah",
-        description: "Enak, 24 jam, penghuni juga saling menghormati. Kos campur dengan suasana kekeluargaan yang hangat.",
-        type: "campur",
-        pricePerMonth: "650000",
-        city: "tasikmalaya",
-        address: "Jl. Anugrah No. 18, Cihideung, Tasikmalaya, Jawa Barat",
-        latitude: "-7.3175",
-        longitude: "108.2210",
-        availableRooms: 5,
-        totalRooms: 15,
-        rating: "4.5",
-        reviewCount: 78,
-        facilities: ["WiFi", "Kasur", "Akses 24 Jam", "Kamar Mandi Luar", "Parkir Motor"],
-        images: [],
-        ownerName: "Bapak Anugrah",
-        ownerPhone: "+629012345678",
-        isAvailable: true,
-        isPromoted: false,
-        roomSize: "3x3 meter",
-        paymentType: "monthly"
-      },
-      {
-        name: "Kost Jibes Tipe A",
-        description: "Tinggal masuk aja, fasilitas standard kamar sudah ada dan cukup. Kos siap huni dengan fasilitas lengkap.",
-        type: "campur",
-        pricePerMonth: "800000",
-        city: "tasikmalaya",
-        address: "Jl. Jibes No. 7, Cihideung, Tasikmalaya, Jawa Barat",
-        latitude: "-7.3189",
-        longitude: "108.2195",
-        availableRooms: 2,
-        totalRooms: 6,
-        rating: "4.6",
-        reviewCount: 33,
-        facilities: ["Kamar Mandi Dalam", "WiFi", "AC", "Kasur", "Lemari", "Meja Kursi"],
-        images: [],
-        ownerName: "Ibu Jibes",
-        ownerPhone: "+629123456789",
-        isAvailable: true,
-        isPromoted: true,
-        roomSize: "3x4 meter",
-        paymentType: "monthly"
-      },
-      // Cipedes District - Affordable Area
-      {
-        name: "Kost Indika",
-        description: "Kamar nyaman serasa di rumah sendiri, cocok untuk istirahat bagi orang-orang yang habis kerja.",
-        type: "putri",
-        pricePerMonth: "750000",
-        city: "tasikmalaya",
-        address: "Jl. Cipedes Raya No. 45, Cipedes, Tasikmalaya, Jawa Barat",
-        latitude: "-7.3405",
-        longitude: "108.2156",
-        availableRooms: 3,
-        totalRooms: 10,
-        rating: "4.8",
-        reviewCount: 56,
-        facilities: ["Kamar Mandi Dalam", "WiFi", "AC", "Kasur", "Lemari", "TV"],
-        images: [],
-        ownerName: "Ibu Indika",
-        ownerPhone: "+629234567890",
-        isAvailable: true,
-        isPromoted: true,
-        roomSize: "3x4 meter",
-        paymentType: "monthly"
-      },
-      {
-        name: "Kost H. Dadang",
-        description: "Harga murah, fasilitas maksimal. Kos putra dengan value terbaik di Cipedes untuk mahasiswa.",
-        type: "putra",
-        pricePerMonth: "450000",
-        city: "tasikmalaya",
-        address: "Jl. H. Dadang No. 33, Cipedes, Tasikmalaya, Jawa Barat",
-        latitude: "-7.3420",
-        longitude: "108.2142",
-        availableRooms: 6,
-        totalRooms: 20,
-        rating: "4.4",
-        reviewCount: 92,
-        facilities: ["WiFi", "Kasur", "Kamar Mandi Luar", "Parkir Motor", "Dapur Bersama"],
-        images: [],
-        ownerName: "Bapak H. Dadang",
-        ownerPhone: "+629345678901",
-        isAvailable: true,
-        isPromoted: false,
-        roomSize: "3x3 meter",
-        paymentType: "monthly"
-      },
-      // Mangkubumi District - Budget Friendly
-      {
-        name: "Kost Bu Haji",
-        description: "Kos putri dengan harga sangat terjangkau di Mangkubumi. Cocok untuk mahasiswa dengan budget terbatas.",
-        type: "putri",
-        pricePerMonth: "401000",
-        city: "tasikmalaya",
-        address: "Jl. Mangkubumi No. 28, Mangkubumi, Tasikmalaya, Jawa Barat",
-        latitude: "-7.3512",
-        longitude: "108.2089",
-        availableRooms: 8,
-        totalRooms: 25,
-        rating: "4.2",
-        reviewCount: 67,
-        facilities: ["Kasur", "Akses 24 Jam", "Kamar Mandi Luar", "Dapur Bersama"],
-        images: [],
-        ownerName: "Ibu Haji Aminah",
-        ownerPhone: "+629456789012",
-        isAvailable: true,
-        isPromoted: false,
-        roomSize: "3x3 meter",
-        paymentType: "monthly"
-      },
-      // Siliwangi Area - Near University
-      {
-        name: "Kost Karmini Premium",
-        description: "Dengan harga yang sangat worth it bisa dapat berbagai fasilitas yang membantu seperti mesin cuci dan pengering. Kebersihan mantap, keamanan jempol dengan satpam 24 jam.",
-        type: "putri",
-        pricePerMonth: "1150000",
-        city: "tasikmalaya",
-        address: "Jl. Siliwangi No. 67, dekat UNSIL, Tasikmalaya, Jawa Barat",
-        latitude: "-7.3398",
-        longitude: "108.2245",
-        availableRooms: 1,
-        totalRooms: 8,
-        rating: "4.9",
-        reviewCount: 145,
-        facilities: ["Kamar Mandi Dalam", "WiFi", "AC", "Kloset Duduk", "Kasur", "Akses 24 Jam", "Mesin Cuci", "Pengering", "Gym", "Security 24 Jam"],
-        images: [],
-        ownerName: "Ibu Karmini",
-        ownerPhone: "+629567890123",
-        isAvailable: true,
-        isPromoted: true,
-        roomSize: "4x5 meter",
-        paymentType: "monthly"
-      }
-    ];
-
-    sampleKos.forEach(kosData => {
-      this.createKos(kosData);
-    });
-
-    // Create sample payments
-    const samplePayments = [
-      {
-        bookingId: 1,
-        tenantName: "Andi Pratama",
-        roomNumber: "A101",
-        kosName: "Kos Melati Hijau",
-        amount: "1200000",
-        dueDate: new Date(2025, 0, 15), // January 15, 2025
-        status: "pending" as const,
-        ownerId: 1,
-      },
-      {
-        bookingId: 2,
-        tenantName: "Sari Wulandari",
-        roomNumber: "B205",
-        kosName: "Kos Executive Plaza",
-        amount: "2500000",
-        dueDate: new Date(2025, 0, 10), // January 10, 2025
-        status: "paid" as const,
-        paidDate: new Date(2025, 0, 8),
-        paymentMethod: "transfer",
-        ownerId: 1,
-      },
-      {
-        bookingId: 3,
-        tenantName: "Budi Santoso",
-        roomNumber: "C301",
-        kosName: "Kos Putri Aman",
-        amount: "1800000",
-        dueDate: new Date(2024, 11, 30), // December 30, 2024 (overdue)
-        status: "pending" as const,
-        ownerId: 2,
-      },
-      {
-        bookingId: 4,
-        tenantName: "Maya Sari",
-        roomNumber: "D104",
-        kosName: "Kos Kampus Center",
-        amount: "650000",
-        dueDate: new Date(2025, 0, 20), // January 20, 2025
-        status: "processing" as const,
-        paymentMethod: "e-wallet",
-        notes: "Menunggu verifikasi transfer GoPay",
-        ownerId: 3,
-      }
-    ];
-
-    samplePayments.forEach(paymentData => {
-      this.createPayment(paymentData);
-    });
-  }
-
   async getKos(id: number): Promise<Kos | undefined> {
     return this.kosList.get(id);
   }
 
   async getAllKos(): Promise<Kos[]> {
-    return Array.from(this.kosList.values());
+    return Array.from(this.kosList.values()).filter(kos => kos.isAvailable);
   }
 
   async getKosByCity(city: string): Promise<Kos[]> {
     return Array.from(this.kosList.values()).filter(kos => 
-      kos.city.toLowerCase() === city.toLowerCase()
+      kos.city.toLowerCase() === city.toLowerCase() && kos.isAvailable
     );
   }
 
   async getKosByType(type: string): Promise<Kos[]> {
     if (type === "semua") return this.getAllKos();
     return Array.from(this.kosList.values()).filter(kos => 
-      kos.type.toLowerCase() === type.toLowerCase()
+      kos.type.toLowerCase() === type.toLowerCase() && kos.isAvailable
     );
   }
 
@@ -972,7 +424,7 @@ export class MemStorage implements IStorage {
         kos.description.toLowerCase().includes(query.toLowerCase()) ||
         kos.address.toLowerCase().includes(query.toLowerCase());
       
-      const matchesCity = !city || kos.city.toLowerCase() === city.toLowerCase();
+      const matchesCity = !city || kos.city.toLowerCase().includes(city.toLowerCase());
       
       const price = parseFloat(kos.pricePerMonth);
       const matchesPrice = (!minPrice || price >= minPrice) && (!maxPrice || price <= maxPrice);
@@ -983,43 +435,30 @@ export class MemStorage implements IStorage {
 
   async getFeaturedKos(): Promise<Kos[]> {
     return Array.from(this.kosList.values())
-      .filter(kos => kos.isAvailable)
-      .sort((a, b) => {
-        if (a.isPromoted && !b.isPromoted) return -1;
-        if (!a.isPromoted && b.isPromoted) return 1;
-        return parseFloat(b.rating) - parseFloat(a.rating);
-      });
+      .filter(kos => kos.isPromoted && kos.isAvailable)
+      .slice(0, 6);
   }
 
   async createKos(insertKos: InsertKos): Promise<Kos> {
-    const id = this.currentKosId++;
-    const now = new Date();
     const kos: Kos = {
+      id: this.currentKosId++,
       ...insertKos,
-      id,
-      createdAt: now,
-      updatedAt: now,
-      reviewCount: insertKos.reviewCount || 0,
-      latitude: insertKos.latitude || null,
-      longitude: insertKos.longitude || null,
-      roomSize: insertKos.roomSize || null,
-      paymentType: insertKos.paymentType || "monthly",
-      isAvailable: insertKos.isAvailable !== undefined ? insertKos.isAvailable : true,
-      isPromoted: insertKos.isPromoted !== undefined ? insertKos.isPromoted : false,
-      ownerId: insertKos.ownerId || null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ownerId: insertKos.ownerId || 1
     };
-    this.kosList.set(id, kos);
+    this.kosList.set(kos.id, kos);
     return kos;
   }
 
   async updateKos(id: number, updateData: Partial<InsertKos>): Promise<Kos | undefined> {
-    const existingKos = this.kosList.get(id);
-    if (!existingKos) return undefined;
-    
+    const kos = this.kosList.get(id);
+    if (!kos) return undefined;
+
     const updatedKos: Kos = {
-      ...existingKos,
+      ...kos,
       ...updateData,
-      updatedAt: new Date(),
+      updatedAt: new Date()
     };
     this.kosList.set(id, updatedKos);
     return updatedKos;
@@ -1030,87 +469,68 @@ export class MemStorage implements IStorage {
   }
 
   async createBooking(insertBooking: InsertBooking): Promise<Booking> {
-    const id = this.currentBookingId++;
     const booking: Booking = {
+      id: this.currentBookingId++,
       ...insertBooking,
-      id,
       createdAt: new Date(),
-      status: insertBooking.status || "pending",
-      notes: insertBooking.notes || null,
-      userId: insertBooking.userId || null,
+      updatedAt: new Date()
     };
-    this.bookingsList.set(id, booking);
+    this.bookingsList.set(booking.id, booking);
     return booking;
   }
 
   async getBookingsByKos(kosId: number): Promise<Booking[]> {
-    return Array.from(this.bookingsList.values()).filter(booking => 
-      booking.kosId === kosId
-    );
+    return Array.from(this.bookingsList.values()).filter(booking => booking.kosId === kosId);
   }
 
   async getBookingsByUser(userId: number): Promise<Booking[]> {
-    return Array.from(this.bookingsList.values()).filter(booking => 
-      booking.userId === userId
-    );
+    return Array.from(this.bookingsList.values()).filter(booking => booking.userId === userId);
   }
 
   async getBookingsByOwner(ownerId: number): Promise<Booking[]> {
-    const ownerKos = await this.getKosByOwner(ownerId);
-    const kosIds = ownerKos.map(k => k.id);
-    return Array.from(this.bookingsList.values()).filter(booking => 
-      kosIds.includes(booking.kosId)
-    );
+    const ownerKosList = Array.from(this.kosList.values()).filter(kos => kos.ownerId === ownerId);
+    const ownerKosIds = ownerKosList.map(kos => kos.id);
+    return Array.from(this.bookingsList.values()).filter(booking => ownerKosIds.includes(booking.kosId));
   }
 
   async updateBookingStatus(id: number, status: string): Promise<Booking | undefined> {
     const booking = this.bookingsList.get(id);
     if (!booking) return undefined;
-    
+
     const updatedBooking: Booking = {
       ...booking,
       status,
+      updatedAt: new Date()
     };
     this.bookingsList.set(id, updatedBooking);
     return updatedBooking;
   }
 
-  // Room operations
   async createRoom(insertRoom: InsertRoom): Promise<Room> {
     const room: Room = {
       id: this.currentRoomId++,
-      number: insertRoom.number,
-      kosName: insertRoom.kosName,
-      type: insertRoom.type,
-      price: insertRoom.price,
-      size: insertRoom.size,
-      floor: insertRoom.floor,
-      description: insertRoom.description || null,
-      facilities: insertRoom.facilities,
-      images: insertRoom.images || [],
-      isOccupied: insertRoom.isOccupied || false,
-      tenantName: insertRoom.tenantName || null,
-      ownerId: insertRoom.ownerId,
+      ...insertRoom,
       createdAt: new Date(),
-      updatedAt: new Date(),
+      updatedAt: new Date()
     };
     this.roomsList.set(room.id, room);
     return room;
   }
 
   async getRoomsByOwner(ownerId: number): Promise<Room[]> {
-    return Array.from(this.roomsList.values()).filter(room => room.ownerId === ownerId);
+    const ownerKosList = Array.from(this.kosList.values()).filter(kos => kos.ownerId === ownerId);
+    const ownerKosIds = ownerKosList.map(kos => kos.id);
+    return Array.from(this.roomsList.values()).filter(room => ownerKosIds.includes(room.kosId));
   }
 
   async updateRoom(id: number, updateData: Partial<InsertRoom>): Promise<Room | undefined> {
     const room = this.roomsList.get(id);
-    if (!room) {
-      return undefined;
-    }
+    if (!room) return undefined;
+
     const updatedRoom: Room = {
       ...room,
       ...updateData,
-      updatedAt: new Date(),
+      updatedAt: new Date()
     };
     this.roomsList.set(id, updatedRoom);
     return updatedRoom;
@@ -1120,24 +540,12 @@ export class MemStorage implements IStorage {
     return this.roomsList.delete(id);
   }
 
-  // Payment operations
   async createPayment(insertPayment: InsertPayment): Promise<Payment> {
     const payment: Payment = {
       id: this.currentPaymentId++,
-      bookingId: insertPayment.bookingId,
-      tenantName: insertPayment.tenantName,
-      roomNumber: insertPayment.roomNumber,
-      kosName: insertPayment.kosName,
-      amount: insertPayment.amount,
-      dueDate: typeof insertPayment.dueDate === 'string' ? new Date(insertPayment.dueDate) : insertPayment.dueDate,
-      paidDate: null,
-      status: insertPayment.status || "pending",
-      paymentMethod: insertPayment.paymentMethod || null,
-      notes: insertPayment.notes || null,
-      proofImagePath: insertPayment.proofImagePath || null,
-      ownerId: insertPayment.ownerId,
+      ...insertPayment,
       createdAt: new Date(),
-      updatedAt: new Date(),
+      updatedAt: new Date()
     };
     this.paymentsList.set(payment.id, payment);
     return payment;
@@ -1161,9 +569,8 @@ export class MemStorage implements IStorage {
 
   async updatePaymentStatus(id: number, status: string, paidDate?: Date, paymentMethod?: string, notes?: string, proofImagePath?: string): Promise<Payment | undefined> {
     const payment = this.paymentsList.get(id);
-    if (!payment) {
-      return undefined;
-    }
+    if (!payment) return undefined;
+
     const updatedPayment: Payment = {
       ...payment,
       status,
@@ -1171,8 +578,9 @@ export class MemStorage implements IStorage {
       paymentMethod: paymentMethod || payment.paymentMethod,
       notes: notes || payment.notes,
       proofImagePath: proofImagePath || payment.proofImagePath,
-      updatedAt: new Date(),
+      updatedAt: new Date()
     };
+
     this.paymentsList.set(id, updatedPayment);
     return updatedPayment;
   }
@@ -1189,6 +597,4 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Use MemStorage - Switched to working memory storage for optimal performance
-// Use DatabaseStorage if DATABASE_URL is available, otherwise fallback to MemStorage
 export const storage = process.env.DATABASE_URL ? new DatabaseStorage() : new MemStorage();
