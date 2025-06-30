@@ -900,5 +900,5 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Use MemStorage for reliable data persistence with authentic Tasikmalaya data
+// Use MemStorage - Supabase connection has issues, falling back to working memory storage
 export const storage = new MemStorage();
