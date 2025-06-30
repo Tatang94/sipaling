@@ -1,5 +1,4 @@
 import { users, kos, bookings, rooms, payments, type User, type Kos, type InsertUser, type InsertKos, type Booking, type InsertBooking, type Room, type InsertRoom, type Payment, type InsertPayment } from "@shared/schema";
-import { db } from "./db";
 import { eq, like, and, gte, lte, or, ilike } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
@@ -44,10 +43,17 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  private db: any;
+  
+  constructor() {
+    const { db } = require("./db");
+    this.db = db;
+  }
+  
   // User operations
   async createUser(insertUser: InsertUser): Promise<User> {
     const hashedPassword = await bcrypt.hash(insertUser.password, 10);
-    const [newUser] = await db
+    const [newUser] = await this.db
       .insert(users)
       .values({
         ...insertUser,
@@ -58,12 +64,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
+    const [user] = await this.db.select().from(users).where(eq(users.email, email));
     return user || undefined;
   }
 
   async getUserById(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
+    const [user] = await this.db.select().from(users).where(eq(users.id, id));
     return user || undefined;
   }
 
@@ -77,25 +83,25 @@ export class DatabaseStorage implements IStorage {
 
   // Kos operations
   async getKos(id: number): Promise<Kos | undefined> {
-    const [kosData] = await db.select().from(kos).where(eq(kos.id, id));
+    const [kosData] = await this.db.select().from(kos).where(eq(kos.id, id));
     return kosData || undefined;
   }
 
   async getAllKos(): Promise<Kos[]> {
-    return await db.select().from(kos);
+    return await this.db.select().from(kos);
   }
 
   async getKosByCity(city: string): Promise<Kos[]> {
-    return await db.select().from(kos).where(eq(kos.city, city.toLowerCase()));
+    return await this.db.select().from(kos).where(eq(kos.city, city.toLowerCase()));
   }
 
   async getKosByType(type: string): Promise<Kos[]> {
     if (type === "semua") return this.getAllKos();
-    return await db.select().from(kos).where(eq(kos.type, type.toLowerCase()));
+    return await this.db.select().from(kos).where(eq(kos.type, type.toLowerCase()));
   }
 
   async getKosByOwner(ownerId: number): Promise<Kos[]> {
-    return await db.select().from(kos).where(eq(kos.ownerId, ownerId));
+    return await this.db.select().from(kos).where(eq(kos.ownerId, ownerId));
   }
 
   async searchKos(query: string, city?: string, minPrice?: number, maxPrice?: number): Promise<Kos[]> {
@@ -104,7 +110,7 @@ export class DatabaseStorage implements IStorage {
     // Apply filters based on parameters
     if (query || city || minPrice || maxPrice) {
       // For simplicity, we'll get all and filter in memory for complex queries
-      const allKos = await db.select().from(kos);
+      const allKos = await this.db.select().from(kos);
       
       return allKos.filter(k => {
         const matchesQuery = !query || 
@@ -125,7 +131,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFeaturedKos(): Promise<Kos[]> {
-    const allKos = await db.select().from(kos);
+    const allKos = await this.db.select().from(kos);
     return allKos
       .filter(k => k.isAvailable)
       .sort((a, b) => {
@@ -153,7 +159,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteKos(id: number): Promise<boolean> {
-    const result = await db.delete(kos).where(eq(kos.id, id));
+    const result = await this.db.delete(kos).where(eq(kos.id, id));
     return (result.rowCount || 0) > 0;
   }
 
@@ -166,11 +172,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getBookingsByKos(kosId: number): Promise<Booking[]> {
-    return await db.select().from(bookings).where(eq(bookings.kosId, kosId));
+    return await this.db.select().from(bookings).where(eq(bookings.kosId, kosId));
   }
 
   async getBookingsByUser(userId: number): Promise<Booking[]> {
-    return await db.select().from(bookings).where(eq(bookings.userId, userId));
+    return await this.db.select().from(bookings).where(eq(bookings.userId, userId));
   }
 
   async getBookingsByOwner(ownerId: number): Promise<Booking[]> {
@@ -178,7 +184,7 @@ export class DatabaseStorage implements IStorage {
     const kosIds = ownerKos.map(k => k.id);
     if (kosIds.length === 0) return [];
     
-    return await db.select().from(bookings).where(
+    return await this.db.select().from(bookings).where(
       or(...kosIds.map(id => eq(bookings.kosId, id)))
     );
   }
@@ -202,7 +208,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRoomsByOwner(ownerId: number): Promise<Room[]> {
-    return await db.select().from(rooms).where(eq(rooms.ownerId, ownerId));
+    return await this.db.select().from(rooms).where(eq(rooms.ownerId, ownerId));
   }
 
   async updateRoom(id: number, updateData: Partial<InsertRoom>): Promise<Room | undefined> {
@@ -215,27 +221,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteRoom(id: number): Promise<boolean> {
-    const result = await db.delete(rooms).where(eq(rooms.id, id));
+    const result = await this.db.delete(rooms).where(eq(rooms.id, id));
     return (result.rowCount || 0) > 0;
   }
 
   // Payment operations
   async createPayment(insertPayment: InsertPayment): Promise<Payment> {
-    const [payment] = await db.insert(payments)
+    const [payment] = await this.db.insert(payments)
       .values(insertPayment)
       .returning();
     return payment;
   }
 
   async getPaymentsByOwner(ownerId: number): Promise<Payment[]> {
-    return await db.select()
+    return await this.db.select()
       .from(payments)
       .where(eq(payments.ownerId, ownerId))
       .orderBy(payments.dueDate);
   }
 
   async getPaymentsByBooking(bookingId: number): Promise<Payment[]> {
-    return await db.select()
+    return await this.db.select()
       .from(payments)
       .where(eq(payments.bookingId, bookingId))
       .orderBy(payments.dueDate);
@@ -246,7 +252,7 @@ export class DatabaseStorage implements IStorage {
     if (paidDate) updateData.paidDate = paidDate;
     if (paymentMethod) updateData.paymentMethod = paymentMethod;
 
-    const [updatedPayment] = await db.update(payments)
+    const [updatedPayment] = await this.db.update(payments)
       .set(updateData)
       .where(eq(payments.id, id))
       .returning();
@@ -255,7 +261,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getOverduePayments(ownerId: number): Promise<Payment[]> {
-    return await db.select()
+    return await this.db.select()
       .from(payments)
       .where(
         and(
@@ -724,4 +730,4 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new DatabaseStorage();
+export const storage = new MemStorage();
