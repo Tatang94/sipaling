@@ -1,6 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { 
   CreditCard, 
   Download, 
@@ -19,19 +22,116 @@ interface Payment {
   tenantName: string;
   roomNumber: string;
   kosName: string;
-  amount: number;
+  amount: string;
   dueDate: string;
-  paidDate?: string;
+  paidDate?: string | null;
   status: 'paid' | 'pending' | 'overdue';
-  paymentMethod?: string;
-  notes?: string;
+  paymentMethod?: string | null;
+  notes?: string | null;
+  ownerId: number;
+  bookingId: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface DashboardPaymentsProps {
-  payments: Payment[];
+  ownerId: number;
 }
 
-export function DashboardPayments({ payments }: DashboardPaymentsProps) {
+export function DashboardPayments({ ownerId }: DashboardPaymentsProps) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Fetch payments data
+  const { data: payments = [], isLoading, error } = useQuery<Payment[]>({
+    queryKey: ['/api/payments/owner', ownerId],
+    queryFn: async () => {
+      const response = await fetch(`/api/payments/owner/${ownerId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch payments');
+      }
+      return response.json();
+    },
+    enabled: !!ownerId,
+  });
+
+  // Mutation for updating payment status
+  const updatePaymentMutation = useMutation({
+    mutationFn: async ({ paymentId, status, paymentMethod }: { paymentId: number; status: string; paymentMethod?: string }) => {
+      const response = await fetch(`/api/payments/${paymentId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status, paymentMethod }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) {
+        throw new Error('Failed to update payment status');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/payments/owner', ownerId] });
+      toast({
+        title: "Berhasil!",
+        description: "Status pembayaran telah diperbarui.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Gagal memperbarui status pembayaran.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleConfirmPayment = (paymentId: number) => {
+    updatePaymentMutation.mutate({ 
+      paymentId, 
+      status: 'paid', 
+      paymentMethod: 'transfer' 
+    });
+  };
+
+  const handleSendReminder = (paymentId: number) => {
+    // This would typically send a notification/reminder
+    toast({
+      title: "Reminder Terkirim",
+      description: "Reminder pembayaran telah dikirim ke tenant.",
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-4 md:p-6">
+        <Card className="bg-gradient-to-br from-white to-teal-50 border-teal-100">
+          <CardHeader>
+            <CardTitle className="text-teal-800">Manajemen Pembayaran</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600 mx-auto"></div>
+              <p className="text-teal-600 mt-2">Memuat data pembayaran...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 md:p-6">
+        <Card className="bg-gradient-to-br from-white to-red-50 border-red-100">
+          <CardHeader>
+            <CardTitle className="text-red-800">Error</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-red-600">Gagal memuat data pembayaran. Silakan coba lagi nanti.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'paid':
@@ -75,9 +175,9 @@ export function DashboardPayments({ payments }: DashboardPaymentsProps) {
   const pendingPayments = payments.filter(p => p.status === 'pending');
   const overduePayments = payments.filter(p => p.status === 'overdue');
 
-  const totalRevenue = paidPayments.reduce((sum, payment) => sum + payment.amount, 0);
-  const pendingAmount = pendingPayments.reduce((sum, payment) => sum + payment.amount, 0);
-  const overdueAmount = overduePayments.reduce((sum, payment) => sum + payment.amount, 0);
+  const totalRevenue = paidPayments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+  const pendingAmount = pendingPayments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+  const overdueAmount = overduePayments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
 
   return (
     <div className="space-y-6">

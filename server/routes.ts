@@ -2,7 +2,7 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertBookingSchema, insertRoomSchema, insertKosSchema } from "@shared/schema";
+import { insertUserSchema, insertBookingSchema, insertRoomSchema, insertKosSchema, insertPaymentSchema } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -465,6 +465,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Room deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete room" });
+    }
+  });
+
+  // Payment routes
+  app.get("/api/payments/owner/:ownerId", async (req, res) => {
+    try {
+      const ownerId = parseInt(req.params.ownerId);
+      if (isNaN(ownerId)) {
+        return res.status(400).json({ error: "Invalid owner ID" });
+      }
+
+      const payments = await storage.getPaymentsByOwner(ownerId);
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching payments:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/payments", async (req, res) => {
+    try {
+      const validatedData = insertPaymentSchema.parse(req.body);
+      const payment = await storage.createPayment(validatedData);
+      res.status(201).json(payment);
+    } catch (error) {
+      console.error("Error creating payment:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation error", details: error.errors });
+      }
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/payments/:id/status", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid payment ID" });
+      }
+
+      const { status, paymentMethod } = req.body;
+      if (!status) {
+        return res.status(400).json({ error: "Status is required" });
+      }
+
+      const paidDate = status === "paid" ? new Date() : undefined;
+      const updatedPayment = await storage.updatePaymentStatus(id, status, paidDate, paymentMethod);
+      
+      if (!updatedPayment) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+
+      res.json(updatedPayment);
+    } catch (error) {
+      console.error("Error updating payment status:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/payments/overdue/:ownerId", async (req, res) => {
+    try {
+      const ownerId = parseInt(req.params.ownerId);
+      if (isNaN(ownerId)) {
+        return res.status(400).json({ error: "Invalid owner ID" });
+      }
+
+      const overduePayments = await storage.getOverduePayments(ownerId);
+      res.json(overduePayments);
+    } catch (error) {
+      console.error("Error fetching overdue payments:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 

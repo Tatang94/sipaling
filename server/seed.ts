@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { kos, type InsertKos } from "@shared/schema";
+import { kos, bookings, payments, users, type InsertKos, type InsertBooking, type InsertPayment, type InsertUser } from "@shared/schema";
 
 const sampleKosData: InsertKos[] = [
   {
@@ -151,6 +151,30 @@ const sampleKosData: InsertKos[] = [
   }
 ];
 
+const sampleUsers: InsertUser[] = [
+  {
+    fullName: "Budi Santoso",
+    email: "pemilik@kosku.com",
+    password: "password123",
+    role: "pemilik",
+    phone: "+62 812 3456 7890"
+  },
+  {
+    fullName: "Siti Nurhaliza",
+    email: "siti@email.com",
+    password: "password123",
+    role: "pencari",
+    phone: "+62 813 4567 8901"
+  },
+  {
+    fullName: "Ahmad Rifai",
+    email: "ahmad@email.com",
+    password: "password123",
+    role: "pencari",
+    phone: "+62 814 5678 9012"
+  }
+];
+
 async function seedDatabase() {
   try {
     console.log("Starting database seeding...");
@@ -162,12 +186,101 @@ async function seedDatabase() {
       return;
     }
     
-    // Insert sample data
-    for (const kosData of sampleKosData) {
-      await db.insert(kos).values(kosData);
-    }
+    // Insert sample users first
+    const insertedUsers = await db.insert(users).values(sampleUsers).returning();
+    const ownerId = insertedUsers.find(u => u.role === "pemilik")?.id;
+    const tenantIds = insertedUsers.filter(u => u.role === "pencari").map(u => u.id);
     
-    console.log(`Successfully seeded ${sampleKosData.length} kos records.`);
+    // Insert sample kos data with ownerId
+    const kosWithOwner = sampleKosData.map(kos => ({
+      ...kos,
+      ownerId: ownerId || 1
+    }));
+    
+    const insertedKos = await db.insert(kos).values(kosWithOwner).returning();
+    
+    // Create sample bookings
+    const sampleBookings: InsertBooking[] = [
+      {
+        kosId: insertedKos[0].id,
+        customerName: "Siti Nurhaliza",
+        customerPhone: "+62 813 4567 8901",
+        customerEmail: "siti@email.com",
+        userId: tenantIds[0],
+        checkInDate: new Date("2024-12-01"),
+        status: "confirmed",
+        notes: "Booking untuk semester baru"
+      },
+      {
+        kosId: insertedKos[1].id,
+        customerName: "Ahmad Rifai",
+        customerPhone: "+62 814 5678 9012",
+        customerEmail: "ahmad@email.com",
+        userId: tenantIds[1],
+        checkInDate: new Date("2024-11-15"),
+        status: "confirmed",
+        notes: "Booking untuk magang di Jakarta"
+      }
+    ];
+    
+    const insertedBookings = await db.insert(bookings).values(sampleBookings).returning();
+    
+    // Create sample payments
+    const samplePayments: InsertPayment[] = [
+      {
+        bookingId: insertedBookings[0].id,
+        tenantName: "Siti Nurhaliza",
+        roomNumber: "A1",
+        kosName: insertedKos[0].name,
+        amount: "1200000",
+        dueDate: new Date("2025-01-01"),
+        status: "paid",
+        paymentMethod: "transfer",
+        notes: "Pembayaran bulan Januari 2025",
+        ownerId: ownerId || 1
+      },
+      {
+        bookingId: insertedBookings[0].id,
+        tenantName: "Siti Nurhaliza",
+        roomNumber: "A1",
+        kosName: insertedKos[0].name,
+        amount: "1200000",
+        dueDate: new Date("2025-02-01"),
+        status: "pending",
+        notes: "Pembayaran bulan Februari 2025",
+        ownerId: ownerId || 1
+      },
+      {
+        bookingId: insertedBookings[1].id,
+        tenantName: "Ahmad Rifai",
+        roomNumber: "B2",
+        kosName: insertedKos[1].name,
+        amount: "1500000",
+        dueDate: new Date("2024-12-25"),
+        status: "overdue",
+        notes: "Pembayaran bulan Desember 2024 - terlambat",
+        ownerId: ownerId || 1
+      },
+      {
+        bookingId: insertedBookings[1].id,
+        tenantName: "Ahmad Rifai",
+        roomNumber: "B2",
+        kosName: insertedKos[1].name,
+        amount: "1500000",
+        dueDate: new Date("2025-01-01"),
+        status: "pending",
+        notes: "Pembayaran bulan Januari 2025",
+        ownerId: ownerId || 1
+      }
+    ];
+    
+    await db.insert(payments).values(samplePayments);
+    
+    console.log(`Successfully seeded:`);
+    console.log(`- ${insertedUsers.length} users`);
+    console.log(`- ${insertedKos.length} kos records`);
+    console.log(`- ${insertedBookings.length} bookings`);
+    console.log(`- ${samplePayments.length} payments`);
   } catch (error) {
     console.error("Error seeding database:", error);
   }

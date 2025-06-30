@@ -1,4 +1,4 @@
-import { users, kos, bookings, rooms, type User, type Kos, type InsertUser, type InsertKos, type Booking, type InsertBooking, type Room, type InsertRoom } from "@shared/schema";
+import { users, kos, bookings, rooms, payments, type User, type Kos, type InsertUser, type InsertKos, type Booking, type InsertBooking, type Room, type InsertRoom, type Payment, type InsertPayment } from "@shared/schema";
 import { db } from "./db";
 import { eq, like, and, gte, lte, or, ilike } from "drizzle-orm";
 import bcrypt from "bcryptjs";
@@ -34,6 +34,13 @@ export interface IStorage {
   getBookingsByUser(userId: number): Promise<Booking[]>;
   getBookingsByOwner(ownerId: number): Promise<Booking[]>;
   updateBookingStatus(id: number, status: string): Promise<Booking | undefined>;
+  
+  // Payment operations
+  createPayment(payment: InsertPayment): Promise<Payment>;
+  getPaymentsByOwner(ownerId: number): Promise<Payment[]>;
+  getPaymentsByBooking(bookingId: number): Promise<Payment[]>;
+  updatePaymentStatus(id: number, status: string, paidDate?: Date, paymentMethod?: string): Promise<Payment | undefined>;
+  getOverduePayments(ownerId: number): Promise<Payment[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -211,6 +218,54 @@ export class DatabaseStorage implements IStorage {
     const result = await db.delete(rooms).where(eq(rooms.id, id));
     return (result.rowCount || 0) > 0;
   }
+
+  // Payment operations
+  async createPayment(insertPayment: InsertPayment): Promise<Payment> {
+    const [payment] = await db.insert(payments)
+      .values(insertPayment)
+      .returning();
+    return payment;
+  }
+
+  async getPaymentsByOwner(ownerId: number): Promise<Payment[]> {
+    return await db.select()
+      .from(payments)
+      .where(eq(payments.ownerId, ownerId))
+      .orderBy(payments.dueDate);
+  }
+
+  async getPaymentsByBooking(bookingId: number): Promise<Payment[]> {
+    return await db.select()
+      .from(payments)
+      .where(eq(payments.bookingId, bookingId))
+      .orderBy(payments.dueDate);
+  }
+
+  async updatePaymentStatus(id: number, status: string, paidDate?: Date, paymentMethod?: string): Promise<Payment | undefined> {
+    const updateData: any = { status };
+    if (paidDate) updateData.paidDate = paidDate;
+    if (paymentMethod) updateData.paymentMethod = paymentMethod;
+
+    const [updatedPayment] = await db.update(payments)
+      .set(updateData)
+      .where(eq(payments.id, id))
+      .returning();
+    
+    return updatedPayment;
+  }
+
+  async getOverduePayments(ownerId: number): Promise<Payment[]> {
+    return await db.select()
+      .from(payments)
+      .where(
+        and(
+          eq(payments.ownerId, ownerId),
+          eq(payments.status, "pending"),
+          lte(payments.dueDate, new Date())
+        )
+      )
+      .orderBy(payments.dueDate);
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -218,20 +273,24 @@ export class MemStorage implements IStorage {
   private kosList: Map<number, Kos>;
   private roomsList: Map<number, Room>;
   private bookingsList: Map<number, Booking>;
+  private paymentsList: Map<number, Payment>;
   private currentUserId: number;
   private currentKosId: number;
   private currentRoomId: number;
   private currentBookingId: number;
+  private currentPaymentId: number;
 
   constructor() {
     this.usersList = new Map();
     this.kosList = new Map();
     this.roomsList = new Map();
     this.bookingsList = new Map();
+    this.paymentsList = new Map();
     this.currentUserId = 1;
     this.currentKosId = 1;
     this.currentRoomId = 1;
     this.currentBookingId = 1;
+    this.currentPaymentId = 1;
     
     // Initialize with sample data
     this.initializeData();
@@ -601,6 +660,67 @@ export class MemStorage implements IStorage {
 
   async deleteRoom(id: number): Promise<boolean> {
     return this.roomsList.delete(id);
+  }
+
+  // Payment operations
+  async createPayment(insertPayment: InsertPayment): Promise<Payment> {
+    const payment: Payment = {
+      id: this.currentPaymentId++,
+      bookingId: insertPayment.bookingId,
+      tenantName: insertPayment.tenantName,
+      roomNumber: insertPayment.roomNumber,
+      kosName: insertPayment.kosName,
+      amount: insertPayment.amount,
+      dueDate: new Date(insertPayment.dueDate),
+      paidDate: null,
+      status: insertPayment.status || "pending",
+      paymentMethod: insertPayment.paymentMethod || null,
+      notes: insertPayment.notes || null,
+      ownerId: insertPayment.ownerId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.paymentsList.set(payment.id, payment);
+    return payment;
+  }
+
+  async getPaymentsByOwner(ownerId: number): Promise<Payment[]> {
+    return Array.from(this.paymentsList.values())
+      .filter(payment => payment.ownerId === ownerId)
+      .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+  }
+
+  async getPaymentsByBooking(bookingId: number): Promise<Payment[]> {
+    return Array.from(this.paymentsList.values())
+      .filter(payment => payment.bookingId === bookingId)
+      .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+  }
+
+  async updatePaymentStatus(id: number, status: string, paidDate?: Date, paymentMethod?: string): Promise<Payment | undefined> {
+    const payment = this.paymentsList.get(id);
+    if (!payment) {
+      return undefined;
+    }
+    const updatedPayment: Payment = {
+      ...payment,
+      status,
+      paidDate: paidDate || payment.paidDate,
+      paymentMethod: paymentMethod || payment.paymentMethod,
+      updatedAt: new Date(),
+    };
+    this.paymentsList.set(id, updatedPayment);
+    return updatedPayment;
+  }
+
+  async getOverduePayments(ownerId: number): Promise<Payment[]> {
+    const now = new Date();
+    return Array.from(this.paymentsList.values())
+      .filter(payment => 
+        payment.ownerId === ownerId &&
+        payment.status === "pending" &&
+        payment.dueDate < now
+      )
+      .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
   }
 }
 

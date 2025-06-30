@@ -72,6 +72,23 @@ export const bookings = pgTable("bookings", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const payments = pgTable("payments", {
+  id: serial("id").primaryKey(),
+  bookingId: integer("booking_id").references(() => bookings.id).notNull(),
+  tenantName: text("tenant_name").notNull(),
+  roomNumber: text("room_number").notNull(),
+  kosName: text("kos_name").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  paidDate: timestamp("paid_date"),
+  status: text("status").notNull().default("pending"), // "pending", "paid", "overdue"
+  paymentMethod: text("payment_method"), // "transfer", "cash", "ewallet", etc
+  notes: text("notes"),
+  ownerId: integer("owner_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -116,6 +133,17 @@ export const insertBookingSchema = createInsertSchema(bookings).omit({
   checkInDate: z.string().transform((val) => new Date(val)),
 });
 
+export const insertPaymentSchema = createInsertSchema(payments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  status: z.string().default("pending"),
+  notes: z.string().nullable().optional(),
+  paymentMethod: z.string().nullable().optional(),
+  dueDate: z.string().transform((val) => new Date(val)),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   ownedKos: many(kos, { relationName: "ownerKos" }),
@@ -140,13 +168,25 @@ export const roomsRelations = relations(rooms, ({ one }) => ({
   }),
 }));
 
-export const bookingsRelations = relations(bookings, ({ one }) => ({
+export const bookingsRelations = relations(bookings, ({ one, many }) => ({
   kos: one(kos, {
     fields: [bookings.kosId],
     references: [kos.id],
   }),
   user: one(users, {
     fields: [bookings.userId],
+    references: [users.id],
+  }),
+  payments: many(payments),
+}));
+
+export const paymentsRelations = relations(payments, ({ one }) => ({
+  booking: one(bookings, {
+    fields: [payments.bookingId],
+    references: [bookings.id],
+  }),
+  owner: one(users, {
+    fields: [payments.ownerId],
     references: [users.id],
   }),
 }));
@@ -159,3 +199,5 @@ export type InsertRoom = z.infer<typeof insertRoomSchema>;
 export type Room = typeof rooms.$inferSelect;
 export type InsertBooking = z.infer<typeof insertBookingSchema>;
 export type Booking = typeof bookings.$inferSelect;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type Payment = typeof payments.$inferSelect;
