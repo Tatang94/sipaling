@@ -208,6 +208,8 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - June 30, 2025: Migrated from MemStorage to DatabaseStorage with persistent PostgreSQL storage
 - June 30, 2025: Fixed face verification camera system with improved error handling and video loading
 - June 30, 2025: Application fully operational with PostgreSQL database integration
+- June 30, 2025: Replaced circular camera with regular rectangular camera interface per user request
+- June 30, 2025: Permanently deleted all sample data from database - database now completely empty for user's own data
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
