@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { CheckCircle, AlertCircle, Scan } from "lucide-react";
-import { SimpleCircularCamera } from "@/components/simple-circular-camera";
+import { RegularCamera } from "@/components/regular-camera";
 
 interface SimpleFaceData {
   imageData: string;
@@ -117,7 +117,7 @@ export default function FaceLogin() {
         <CardContent>
           <div className="space-y-6">
             {/* Circular Face Camera */}
-            <SimpleCircularCamera
+            <RegularCamera
               mode="login"
               onCapture={handleFaceCapture}
               onError={handleError}

@@ -11,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { SimpleCircularCamera } from "@/components/simple-circular-camera";
+import { RegularCamera } from "@/components/regular-camera";
 import { Camera, UserPlus, Shield } from "lucide-react";
 
 interface SimpleFaceData {
@@ -222,11 +222,11 @@ export default function FaceRegister() {
                 Registrasi Wajah untuk {registrationData?.name}
               </CardTitle>
               <CardDescription className="text-center">
-                Gunakan kamera bulat untuk mendaftarkan wajah Anda
+                Gunakan kamera untuk mendaftarkan wajah Anda
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <SimpleCircularCamera
+              <RegularCamera
                 mode="register"
                 onCapture={handleFaceRegistration}
                 onError={handleError}
