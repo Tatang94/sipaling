@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Home, Users, Calendar, Plus, MapPin, Star, Phone } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
+import type { Kos, Booking } from "@shared/schema";
 
 // Mock user untuk demo - akan diganti dengan real auth nanti
 const mockUser = {
@@ -15,17 +16,17 @@ const mockUser = {
 };
 
 export default function DashboardPage() {
-  const { data: kosData = [], isLoading: kosLoading } = useQuery({
+  const { data: kosData = [], isLoading: kosLoading } = useQuery<Kos[]>({
     queryKey: ['/api/dashboard/kos', mockUser.id],
     enabled: mockUser.role === 'pemilik'
   });
 
-  const { data: bookingsData = [], isLoading: bookingsLoading } = useQuery({
+  const { data: bookingsData = [], isLoading: bookingsLoading } = useQuery<Booking[]>({
     queryKey: ['/api/dashboard/bookings', mockUser.id],
     enabled: mockUser.role === 'pemilik'
   });
 
-  const { data: myBookingsData = [], isLoading: myBookingsLoading } = useQuery({
+  const { data: myBookingsData = [], isLoading: myBookingsLoading } = useQuery<Booking[]>({
     queryKey: ['/api/dashboard/my-bookings', mockUser.id],
     enabled: mockUser.role === 'pencari'
   });
