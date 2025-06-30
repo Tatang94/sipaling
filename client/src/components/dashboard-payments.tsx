@@ -45,15 +45,14 @@ export function DashboardPayments({ ownerId }: DashboardPaymentsProps) {
 
   // Fetch payments data
   const { data: payments = [], isLoading, error } = useQuery<Payment[]>({
-    queryKey: ['/api/payments/owner', ownerId],
+    queryKey: ['/api/payments'],
     queryFn: async () => {
-      const response = await fetch(`/api/payments/owner/${ownerId}`);
+      const response = await fetch('/api/payments');
       if (!response.ok) {
         throw new Error('Failed to fetch payments');
       }
       return response.json();
     },
-    enabled: !!ownerId,
   });
 
   // Mutation for updating payment status
@@ -344,7 +343,7 @@ export function DashboardPayments({ ownerId }: DashboardPaymentsProps) {
                       {getStatusText(payment.status)}
                     </Badge>
                     <p className="text-lg font-bold text-teal-800 mt-1">
-                      {formatPrice(payment.amount)}
+                      {formatPrice(parseFloat(payment.amount || '0'))}
                     </p>
                   </div>
                 </div>

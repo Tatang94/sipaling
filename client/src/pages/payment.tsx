@@ -289,7 +289,7 @@ Terima kasih telah menggunakan SI PALING KOST! 🏠`;
               <div>
                 <Label className="text-sm text-gray-600">Jumlah Tagihan</Label>
                 <p className="text-2xl font-bold text-teal-600">
-                  {formatPrice(payment.amount)}
+                  {formatPrice(parseFloat(payment.amount || '0'))}
                 </p>
               </div>
             </div>
@@ -353,7 +353,7 @@ Terima kasih telah menggunakan SI PALING KOST! 🏠`;
                         </div>
                         <div className="flex justify-between">
                           <span className="text-teal-700">Jumlah Transfer</span>
-                          <span className="font-bold text-teal-800">{formatPrice(payment.amount)}</span>
+                          <span className="font-bold text-teal-800">{formatPrice(parseFloat(payment.amount || '0'))}</span>
                         </div>
                       </div>
                     </CardContent>

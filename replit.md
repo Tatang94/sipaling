@@ -174,6 +174,9 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - June 30, 2025: Removed "Lihat Detail" and "Kontak" buttons as requested by user
 - June 30, 2025: Made kos photos clickable to redirect directly to booking/payment page
 - June 30, 2025: Simplified user interface by removing unnecessary action buttons
+- June 30, 2025: Fixed payment system data formatting issues (amount and date display)
+- June 30, 2025: Added GET /api/payments endpoint for dashboard payment data
+- June 30, 2025: Resolved "Data pembayaran tidak ditemukan" issue with proper API integration
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
