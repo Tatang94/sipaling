@@ -171,6 +171,9 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - June 30, 2025: Removed all demo/mock data - application now uses only real database content
 - June 30, 2025: Updated location search to fetch real kos data with distance calculations
 - June 30, 2025: Implemented functional contact system via WhatsApp for kos inquiries
+- June 30, 2025: Removed "Lihat Detail" and "Kontak" buttons as requested by user
+- June 30, 2025: Made kos photos clickable to redirect directly to booking/payment page
+- June 30, 2025: Simplified user interface by removing unnecessary action buttons
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

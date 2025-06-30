@@ -49,7 +49,7 @@ export default function KosCard({ kos, onViewDetails, onBook }: KosCardProps) {
           src={kos.images[0]}
           alt={kos.name}
           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
-          onClick={() => onViewDetails(kos)}
+          onClick={() => onBook(kos)}
         />
         <div className="absolute top-4 left-4">
           {getStatusBadge()}
@@ -72,10 +72,7 @@ export default function KosCard({ kos, onViewDetails, onBook }: KosCardProps) {
       
       <div className="p-6">
         <div className="flex items-start justify-between mb-2">
-          <h3 
-            className="text-lg font-semibold text-gray-900 group-hover:text-primary transition-colors cursor-pointer"
-            onClick={() => onViewDetails(kos)}
-          >
+          <h3 className="text-lg font-semibold text-gray-900">
             {kos.name}
           </h3>
           <div className="flex items-center text-sm text-gray-600">

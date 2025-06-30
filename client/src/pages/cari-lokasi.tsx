@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import LocationMap from '@/components/location-map';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, MapPin, Navigation, Home, Users, Wifi, Car, AirVent, Utensils } from 'lucide-react';
 
 export default function CariLokasiPage() {
+  const [, setLocation] = useLocation();
   const [selectedLocation, setSelectedLocation] = useState<{
     lat: number;
     lng: number;
@@ -161,7 +162,27 @@ export default function CariLokasiPage() {
                         <img 
                           src={kos.images?.[0] || "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400&h=300&fit=crop"} 
                           alt={kos.name}
-                          className="w-20 h-20 object-cover rounded-lg"
+                          className="w-20 h-20 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => {
+                            // Navigate to booking/payment
+                            const paymentId = `PAY-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                            const bookingData = {
+                              id: Date.now(),
+                              kosId: kos.id,
+                              kosName: kos.name,
+                              amount: parseFloat(kos.pricePerMonth || '0'),
+                              dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                              status: 'pending',
+                              paymentId: paymentId,
+                              createdAt: new Date().toISOString()
+                            };
+                            
+                            const existingBookings = JSON.parse(localStorage.getItem("userBookings") || "[]");
+                            existingBookings.push(bookingData);
+                            localStorage.setItem("userBookings", JSON.stringify(existingBookings));
+                            
+                            setLocation(`/payment?id=${paymentId}`);
+                          }}
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between">
@@ -198,32 +219,7 @@ export default function CariLokasiPage() {
                             )}
                           </div>
                           
-                          <div className="flex gap-2 mt-3">
-                            <Button 
-                              size="sm" 
-                              className="flex-1"
-                              onClick={() => {
-                                // Contact via WhatsApp for details
-                                const phone = kos.ownerPhone?.replace(/[^0-9]/g, '') || '';
-                                const message = encodeURIComponent(`Halo, saya tertarik dengan kos ${kos.name}. Bisa minta info detail dan jadwal kunjungan?`);
-                                window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
-                              }}
-                            >
-                              Lihat Detail
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => {
-                                // Contact via WhatsApp
-                                const phone = kos.ownerPhone?.replace(/[^0-9]/g, '') || '';
-                                const message = encodeURIComponent(`Halo, saya tertarik dengan kos ${kos.name} di ${kos.address}. Bisa diskusi lebih lanjut?`);
-                                window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
-                              }}
-                            >
-                              Kontak
-                            </Button>
-                          </div>
+
                         </div>
                       </div>
                     </div>
