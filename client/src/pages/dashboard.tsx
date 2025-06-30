@@ -5,10 +5,10 @@ import { DashboardStats } from "@/components/dashboard-stats";
 import { DashboardTenants } from "@/components/dashboard-tenants";
 import { DashboardRooms } from "@/components/dashboard-rooms";
 import { DashboardPayments } from "@/components/dashboard-payments";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Bell, MessageSquare, Plus, TrendingUp } from "lucide-react";
+import { Bell, MessageSquare, Plus, TrendingUp, Calendar } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import type { Kos, Booking } from "@shared/schema";
 

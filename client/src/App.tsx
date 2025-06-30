@@ -16,6 +16,13 @@ function Router() {
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
+    // Skip splash and onboarding for deployment demo
+    if (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('replit.dev')) {
+      setShowSplash(false);
+      setShowOnboarding(false);
+      return;
+    }
+
     const hasSeenSplash = localStorage.getItem("hasSeenSplash");
     const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
     
@@ -46,7 +53,8 @@ function Router() {
 
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/" component={DashboardPage} />
+      <Route path="/home" component={Home} />
       <Route path="/search" component={Search} />
       <Route path="/login" component={LoginPage} />
       <Route path="/dashboard" component={DashboardPage} />
