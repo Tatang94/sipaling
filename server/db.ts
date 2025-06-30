@@ -13,11 +13,11 @@ let pool: Pool | null = null;
 let db: any = null;
 
 try {
-  if (DATABASE_URL && process.env.PGHOST) {
+  if (DATABASE_URL && (process.env.PGHOST || DATABASE_URL.includes('neon.tech'))) {
     neonConfig.webSocketConstructor = ws;
     pool = new Pool({ connectionString: DATABASE_URL });
     db = drizzle({ client: pool, schema });
-    console.log("Database connection configured successfully with Replit PostgreSQL");
+    console.log("Database connection configured successfully with PostgreSQL");
   } else {
     console.log("DATABASE_URL not found, will use in-memory storage");
   }

@@ -194,6 +194,10 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - June 30, 2025: Updated navigation and onboarding to use face authentication exclusively
 - June 30, 2025: Created face-register and face-login pages with camera integration
 - June 30, 2025: Added API endpoints for face-only registration and login (/api/auth/register-face, /api/auth/face-login)
+- June 30, 2025: Permanently removed all sample data feed from database at user request
+- June 30, 2025: Successfully connected PostgreSQL database using Neon (after Supabase hostname issues)
+- June 30, 2025: Database schema pushed to Neon PostgreSQL with all tables created successfully
+- June 30, 2025: Application ready with empty database for pemilik kos to upload their own data
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
