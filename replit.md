@@ -129,6 +129,8 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - June 30, 2025: Added comprehensive sidebar navigation and statistics dashboard
 - June 30, 2025: Implemented tenant management, room management, and payment tracking
 - June 30, 2025: Created professional dashboard components with real-time data
+- June 30, 2025: Fixed Vercel deployment configuration and resolved build output directory issues
+- June 30, 2025: Finalized deployment setup with proper build command and output to dist/public
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
