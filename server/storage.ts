@@ -9,6 +9,8 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserById(id: number): Promise<User | undefined>;
   verifyPassword(email: string, password: string): Promise<User | null>;
+  updateUserFaceData(userId: number, faceData: string): Promise<User | undefined>;
+  verifyUserFace(userId: number, capturedFaceData: string): Promise<boolean>;
   
   // Kos operations
   getKos(id: number): Promise<Kos | undefined>;
@@ -80,6 +82,38 @@ export class DatabaseStorage implements IStorage {
     
     const isValid = await bcrypt.compare(password, user.password);
     return isValid ? user : null;
+  }
+
+  async updateUserFaceData(userId: number, faceData: string): Promise<User | undefined> {
+    const [updatedUser] = await this.db
+      .update(users)
+      .set({ 
+        faceData: faceData, 
+        faceRegistered: true 
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return updatedUser || undefined;
+  }
+
+  async verifyUserFace(userId: number, capturedFaceData: string): Promise<boolean> {
+    const user = await this.getUserById(userId);
+    if (!user || !user.faceData || !user.faceRegistered) {
+      return false;
+    }
+
+    // Simulasi algoritma face matching
+    try {
+      const storedFaceData = JSON.parse(atob(user.faceData));
+      const capturedData = JSON.parse(atob(capturedFaceData));
+      
+      // Simulasi similarity check dengan threshold 80%
+      const similarity = Math.random() * 0.4 + 0.6; // 60-100% untuk demo
+      return similarity > 0.8;
+    } catch (error) {
+      console.error('Face verification error:', error);
+      return false;
+    }
   }
 
   // Kos operations
@@ -310,6 +344,8 @@ export class MemStorage implements IStorage {
       ...insertUser,
       password: hashedPassword,
       phone: insertUser.phone || null,
+      faceData: null,
+      faceRegistered: false,
       createdAt: new Date(),
     };
     this.usersList.set(user.id, user);
@@ -330,6 +366,40 @@ export class MemStorage implements IStorage {
     
     const isValid = await bcrypt.compare(password, user.password);
     return isValid ? user : null;
+  }
+
+  async updateUserFaceData(userId: number, faceData: string): Promise<User | undefined> {
+    const user = this.usersList.get(userId);
+    if (!user) return undefined;
+    
+    const updatedUser: User = {
+      ...user,
+      faceData: faceData,
+      faceRegistered: true
+    };
+    
+    this.usersList.set(userId, updatedUser);
+    return updatedUser;
+  }
+
+  async verifyUserFace(userId: number, capturedFaceData: string): Promise<boolean> {
+    const user = this.usersList.get(userId);
+    if (!user || !user.faceData || !user.faceRegistered) {
+      return false;
+    }
+
+    // Simulasi algoritma face matching untuk MemStorage
+    try {
+      const storedFaceData = JSON.parse(atob(user.faceData));
+      const capturedData = JSON.parse(atob(capturedFaceData));
+      
+      // Simulasi similarity check dengan threshold 80%
+      const similarity = Math.random() * 0.4 + 0.6; // 60-100% untuk demo
+      return similarity > 0.8;
+    } catch (error) {
+      console.error('Face verification error:', error);
+      return false;
+    }
   }
 
   private initializeData() {

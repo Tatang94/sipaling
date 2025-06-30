@@ -861,6 +861,82 @@ Mohon segera lakukan pembayaran melalui aplikasi atau hubungi kami. Terima kasih
     }
   });
 
+  // Face verification API endpoints
+  app.post("/api/users/:id/register-face", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+
+      const { faceData } = req.body;
+      if (!faceData) {
+        return res.status(400).json({ error: "Face data is required" });
+      }
+
+      const updatedUser = await storage.updateUserFaceData(userId, faceData);
+      if (!updatedUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.json({
+        success: true,
+        message: "Face data registered successfully",
+        faceRegistered: updatedUser.faceRegistered
+      });
+    } catch (error) {
+      console.error("Error registering face data:", error);
+      res.status(500).json({ error: "Failed to register face data" });
+    }
+  });
+
+  app.post("/api/users/:id/verify-face", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+
+      const { capturedFaceData } = req.body;
+      if (!capturedFaceData) {
+        return res.status(400).json({ error: "Captured face data is required" });
+      }
+
+      const isVerified = await storage.verifyUserFace(userId, capturedFaceData);
+      
+      res.json({
+        success: true,
+        verified: isVerified,
+        message: isVerified ? "Face verification successful" : "Face verification failed"
+      });
+    } catch (error) {
+      console.error("Error verifying face:", error);
+      res.status(500).json({ error: "Failed to verify face" });
+    }
+  });
+
+  app.get("/api/users/:id/face-status", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+
+      const user = await storage.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.json({
+        faceRegistered: user.faceRegistered || false,
+        hasFaceData: !!user.faceData
+      });
+    } catch (error) {
+      console.error("Error getting face status:", error);
+      res.status(500).json({ error: "Failed to get face status" });
+    }
+  });
+
   // Serve uploaded files and scraped images
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
   app.use('/images', express.static(path.join(process.cwd(), 'public', 'images')));

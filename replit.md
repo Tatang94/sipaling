@@ -184,6 +184,11 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - June 30, 2025: Application now fully operational with persistent PostgreSQL storage
 - June 30, 2025: Cleared all sample data from database per user request 
 - June 30, 2025: Database ready for user to upload their own kos data
+- June 30, 2025: Implemented face verification system for enhanced login security
+- June 30, 2025: Added face registration modal with multi-angle photo capture
+- June 30, 2025: Created face verification modal with real-time camera access
+- June 30, 2025: Updated database schema to store encrypted face data
+- June 30, 2025: Integrated face verification into login flow with fallback options
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

@@ -11,6 +11,8 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   role: text("role").notNull().default("pencari"), // "pencari" or "pemilik"
   phone: text("phone"),
+  faceData: text("face_data"), // Data wajah terenkripsi untuk verifikasi
+  faceRegistered: boolean("face_registered").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -1,65 +1,89 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Eye, EyeOff, Home, Mail, Lock, User, Phone, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { FaceVerificationModal } from "@/components/face-verification-modal";
+import { FaceRegistrationModal } from "@/components/face-registration-modal";
+import { Shield, Eye, EyeOff } from "lucide-react";
 
-export default function LoginPage() {
+const loginSchema = z.object({
+  email: z.string().email("Email tidak valid"),
+  password: z.string().min(6, "Password minimal 6 karakter"),
+});
+
+type LoginForm = z.infer<typeof loginSchema>;
+
+export default function Login() {
   const [, setLocation] = useLocation();
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showWhatsAppVerification, setShowWhatsAppVerification] = useState(false);
-  const [activeTab, setActiveTab] = useState("login");
-  const [whatsAppData, setWhatsAppData] = useState({
-    phone: "",
-    verificationCode: "",
-  });
   const { toast } = useToast();
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginStep, setLoginStep] = useState<'credentials' | 'face-verification'>('credentials');
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showFaceVerification, setShowFaceVerification] = useState(false);
+  const [showFaceRegistration, setShowFaceRegistration] = useState(false);
 
-  // Login form state
-  const [loginData, setLoginData] = useState({
-    email: "",
-    password: "",
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginForm>({
+    resolver: zodResolver(loginSchema),
   });
 
-  // Register form state
-  const [registerData, setRegisterData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    password: "",
-    confirmPassword: "",
-    role: "pencari" as "pencari" | "pemilik",
+  // Check user's face registration status
+  const { data: faceStatus } = useQuery({
+    queryKey: ['/api/users', currentUser?.id, 'face-status'],
+    enabled: !!currentUser?.id,
   });
 
   const loginMutation = useMutation({
-    mutationFn: async (credentials: { email: string; password: string }) => {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(credentials),
+    mutationFn: async (data: LoginForm) => {
+      const response = await apiRequest('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(data),
       });
+      
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Login gagal");
+        throw new Error(error.message || 'Login gagal');
       }
+      
       return response.json();
     },
     onSuccess: (data) => {
-      toast({
-        title: "Login Berhasil!",
-        description: `Selamat datang kembali, ${data.user.name}`,
-      });
-      localStorage.setItem("user", JSON.stringify(data.user));
-      setLocation(data.user.role === "pemilik" ? "/dashboard" : "/");
+      setCurrentUser(data.user);
+      
+      // Check if user has face verification enabled
+      if (data.user.faceRegistered) {
+        setLoginStep('face-verification');
+        setShowFaceVerification(true);
+      } else {
+        // Ask if user wants to register face for additional security
+        toast({
+          title: "Login Berhasil",
+          description: "Daftarkan wajah Anda untuk keamanan tambahan?",
+          action: (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFaceRegistration(true)}
+            >
+              Daftar Wajah
+            </Button>
+          ),
+        });
+        
+        // Complete login without face verification
+        completeLogin(data);
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -70,502 +94,188 @@ export default function LoginPage() {
     },
   });
 
-  const registerMutation = useMutation({
-    mutationFn: async (userData: typeof registerData) => {
-      const { confirmPassword, ...dataToSend } = userData;
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dataToSend),
+  const registerFaceMutation = useMutation({
+    mutationFn: async (faceData: string) => {
+      const response = await apiRequest(`/api/users/${currentUser.id}/register-face`, {
+        method: 'POST',
+        body: JSON.stringify({ faceData }),
       });
+      
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Registrasi gagal");
+        throw new Error('Gagal mendaftarkan wajah');
       }
+      
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast({
-        title: "Registrasi Berhasil!",
-        description: `Akun ${data.user.name} telah dibuat. Silakan login.`,
+        title: "Registrasi Wajah Berhasil",
+        description: "Wajah Anda telah terdaftar untuk keamanan login.",
       });
-      // Reset form and switch to login tab
-      setRegisterData({
-        name: "",
-        email: "",
-        phone: "",
-        password: "",
-        confirmPassword: "",
-        role: "pencari",
-      });
-
+      completeLogin({ user: currentUser, token: 'demo-token' });
     },
     onError: (error: Error) => {
-      let errorMessage = error.message;
-      
-      // Provide more helpful error messages
-      if (errorMessage.includes("Email sudah terdaftar")) {
-        errorMessage = "Email ini sudah terdaftar. Silakan gunakan email lain atau masuk dengan akun yang sudah ada.";
-      }
-      
       toast({
-        title: "Registrasi Gagal",
-        description: errorMessage,
+        title: "Registrasi Wajah Gagal",
+        description: error.message,
         variant: "destructive",
       });
+      // Complete login without face registration
+      completeLogin({ user: currentUser, token: 'demo-token' });
     },
   });
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    loginMutation.mutate(loginData);
-  };
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const completeLogin = (data: any) => {
+    // Store user data in localStorage
+    localStorage.setItem('user', JSON.stringify(data.user));
+    localStorage.setItem('token', data.token || 'demo-token');
     
-    // Validation checks
-    if (!registerData.name.trim()) {
-      toast({
-        title: "Error",
-        description: "Nama lengkap harus diisi",
-        variant: "destructive",
-      });
-      return;
-    }
+    toast({
+      title: "Login Berhasil",
+      description: `Selamat datang, ${data.user.name}!`,
+    });
 
-    if (!registerData.email.trim()) {
-      toast({
-        title: "Error", 
-        description: "Email harus diisi",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!registerData.phone.trim()) {
-      toast({
-        title: "Error",
-        description: "Nomor WhatsApp harus diisi", 
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (registerData.password.length < 6) {
-      toast({
-        title: "Error",
-        description: "Password minimal 6 karakter",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (registerData.password !== registerData.confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Password dan konfirmasi password tidak sama",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    registerMutation.mutate(registerData);
-  };
-
-  const handleWhatsAppVerification = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!whatsAppData.verificationCode) {
-      // Send verification code
-      if (whatsAppData.phone) {
-        toast({
-          title: "Kode Verifikasi Dikirim",
-          description: `Kode verifikasi telah dikirim ke WhatsApp ${whatsAppData.phone}`,
-        });
-      }
-      return;
-    }
-
-    if (whatsAppData.verificationCode.length === 6) {
-      // Verify code and login
-      const mockUser = {
-        id: 999,
-        name: "Pencari Kos",
-        email: `${whatsAppData.phone}@whatsapp.user`,
-        phone: whatsAppData.phone,
-        role: "pencari"
-      };
-      
-      localStorage.setItem("user", JSON.stringify(mockUser));
-      
-      toast({
-        title: "Login Berhasil!",
-        description: "Anda berhasil masuk dengan WhatsApp",
-      });
-      
-      setShowWhatsAppVerification(false);
-      setWhatsAppData({ phone: "", verificationCode: "" });
-      setLocation("/");
+    // Redirect based on user role
+    if (data.user.role === 'pemilik') {
+      setLocation('/dashboard');
     } else {
-      toast({
-        title: "Kode Tidak Valid",
-        description: "Masukkan kode verifikasi 6 digit yang benar",
-        variant: "destructive",
-      });
+      setLocation('/');
     }
+  };
+
+  const onSubmit = (data: LoginForm) => {
+    loginMutation.mutate(data);
+  };
+
+  const handleFaceVerificationSuccess = () => {
+    completeLogin({ user: currentUser, token: 'demo-token' });
+  };
+
+  const handleFaceRegistration = (faceData: string) => {
+    registerFaceMutation.mutate(faceData);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary via-green-500 to-emerald-600 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 to-green-50 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-              <Home className="w-8 h-8 text-white" />
+            <div className="bg-teal-600 p-3 rounded-full">
+              <Shield className="h-6 w-6 text-white" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">SI PALING KOST</h1>
-          <p className="text-white/80">Masuk atau daftar untuk melanjutkan</p>
-        </div>
-
-        {/* Auth Card */}
-        <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
-          <CardHeader className="text-center pb-6">
-            <CardTitle className="text-gray-900">Selamat Datang</CardTitle>
-            <CardDescription>
-              Kelola pencarian kos Anda dengan mudah
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="login">Masuk</TabsTrigger>
-                <TabsTrigger value="register">Daftar</TabsTrigger>
-              </TabsList>
-
-              {/* Login Tab */}
-              <TabsContent value="login">
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <Input
-                        id="login-email"
-                        type="email"
-                        placeholder="nama@email.com"
-                        className="pl-10"
-                        value={loginData.email}
-                        onChange={(e) => setLoginData(prev => ({ ...prev, email: e.target.value }))}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="login-password">Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <Input
-                        id="login-password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Masukkan password"
-                        className="pl-10 pr-10"
-                        value={loginData.password}
-                        onChange={(e) => setLoginData(prev => ({ ...prev, password: e.target.value }))}
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <label className="flex items-center">
-                      <input type="checkbox" className="mr-2" />
-                      Ingat saya
-                    </label>
-                    <button type="button" className="text-primary hover:underline">
-                      Lupa password?
-                    </button>
-                  </div>
-
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95"
-                    disabled={loginMutation.isPending}
-                  >
-                    {loginMutation.isPending ? (
-                      <div className="flex items-center justify-center space-x-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                        <span>Masuk...</span>
-                      </div>
-                    ) : (
-                      "Masuk"
-                    )}
-                  </Button>
-                </form>
-              </TabsContent>
-
-              {/* Register Tab */}
-              <TabsContent value="register">
-                <form onSubmit={handleRegister} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="register-name">Nama Lengkap</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <Input
-                        id="register-name"
-                        type="text"
-                        placeholder="Nama lengkap Anda"
-                        className="pl-10"
-                        value={registerData.name}
-                        onChange={(e) => setRegisterData(prev => ({ ...prev, name: e.target.value }))}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="register-email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <Input
-                        id="register-email"
-                        type="email"
-                        placeholder="nama@email.com"
-                        className="pl-10"
-                        value={registerData.email}
-                        onChange={(e) => setRegisterData(prev => ({ ...prev, email: e.target.value }))}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="register-phone">Nomor Telepon</Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <Input
-                        id="register-phone"
-                        type="tel"
-                        placeholder="+62 812 3456 7890"
-                        className="pl-10"
-                        value={registerData.phone}
-                        onChange={(e) => setRegisterData(prev => ({ ...prev, phone: e.target.value }))}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="register-password">Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <Input
-                        id="register-password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Buat password"
-                        className="pl-10 pr-10"
-                        value={registerData.password}
-                        onChange={(e) => setRegisterData(prev => ({ ...prev, password: e.target.value }))}
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="register-role">Daftar Sebagai</Label>
-                    <Select
-                      value={registerData.role}
-                      onValueChange={(value: "pencari" | "pemilik") => 
-                        setRegisterData(prev => ({ ...prev, role: value }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih peran Anda" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pencari">Pencari Kos</SelectItem>
-                        <SelectItem value="pemilik">Pemilik Kos</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="register-confirm-password">Konfirmasi Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <Input
-                        id="register-confirm-password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Ulangi password"
-                        className="pl-10"
-                        value={registerData.confirmPassword}
-                        onChange={(e) => setRegisterData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="text-sm text-gray-600">
-                    <label className="flex items-start">
-                      <input type="checkbox" className="mr-2 mt-1" required />
-                      <span>
-                        Saya setuju dengan{" "}
-                        <button type="button" className="text-primary hover:underline">
-                          Syarat & Ketentuan
-                        </button>{" "}
-                        dan{" "}
-                        <button type="button" className="text-primary hover:underline">
-                          Kebijakan Privasi
-                        </button>
-                      </span>
-                    </label>
-                  </div>
-
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95"
-                    disabled={registerMutation.isPending}
-                  >
-                    {registerMutation.isPending ? (
-                      <div className="flex items-center justify-center space-x-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                        <span>Mendaftar...</span>
-                      </div>
-                    ) : (
-                      "Daftar"
-                    )}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
-
-            {/* WhatsApp Login */}
-            <div className="mt-6">
+          <CardTitle className="text-2xl text-center">Masuk Akun</CardTitle>
+          <CardDescription className="text-center">
+            Masukkan email dan password Anda
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="contoh@email.com"
+                {...register("email")}
+              />
+              {errors.email && (
+                <p className="text-sm text-red-500">{errors.email.message}</p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
               <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">Atau masuk dengan</span>
-                </div>
-              </div>
-
-              <div className="mt-4">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Masukkan password"
+                  {...register("password")}
+                />
                 <Button
                   type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => setShowWhatsAppVerification(true)}
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
                 >
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  WhatsApp
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
+              {errors.password && (
+                <p className="text-sm text-red-500">{errors.password.message}</p>
+              )}
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Back to Home */}
-        <div className="text-center mt-6">
-          <Button
-            variant="ghost"
-            onClick={() => setLocation("/")}
-            className="text-white hover:text-white/80 hover:bg-white/10"
-          >
-            Kembali ke Beranda
-          </Button>
-        </div>
-      </div>
-
-      {/* WhatsApp Verification Modal */}
-      <Dialog open={showWhatsAppVerification} onOpenChange={setShowWhatsAppVerification}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="w-5 h-5" />
-              Masuk dengan WhatsApp
-            </DialogTitle>
-            <DialogDescription>
-              Masukkan nomor WhatsApp Anda untuk mendapatkan kode verifikasi
-            </DialogDescription>
-          </DialogHeader>
-          
-          <form onSubmit={handleWhatsAppVerification} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="whatsapp-phone">Nomor WhatsApp</Label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  id="whatsapp-phone"
-                  type="tel"
-                  placeholder="+62 812 3456 7890"
-                  className="pl-10"
-                  value={whatsAppData.phone}
-                  onChange={(e) => setWhatsAppData(prev => ({ ...prev, phone: e.target.value }))}
-                  required
-                />
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+              <div className="flex items-center gap-2 text-green-700">
+                <Shield className="h-4 w-4" />
+                <span className="text-sm font-medium">Keamanan Wajah</span>
               </div>
+              <p className="text-xs text-green-600 mt-1">
+                Aplikasi dilengkapi verifikasi wajah untuk keamanan maksimal
+              </p>
             </div>
 
-            {whatsAppData.phone && (
-              <div className="space-y-2">
-                <Label htmlFor="verification-code">Kode Verifikasi</Label>
-                <Input
-                  id="verification-code"
-                  type="text"
-                  placeholder="Masukkan 6 digit kode"
-                  maxLength={6}
-                  value={whatsAppData.verificationCode}
-                  onChange={(e) => setWhatsAppData(prev => ({ ...prev, verificationCode: e.target.value }))}
-                />
-                <p className="text-sm text-gray-500">
-                  Kode verifikasi telah dikirim ke WhatsApp {whatsAppData.phone}
-                </p>
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowWhatsAppVerification(false)}
-                className="flex-1"
-              >
-                Batal
-              </Button>
-              <Button
-                type="submit"
-                className="flex-1 bg-green-600 hover:bg-green-700"
-                disabled={!whatsAppData.phone}
-              >
-                {whatsAppData.phone && !whatsAppData.verificationCode 
-                  ? "Kirim Kode" 
-                  : whatsAppData.verificationCode 
-                  ? "Verifikasi" 
-                  : "Lanjutkan"
-                }
-              </Button>
-            </div>
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={loginMutation.isPending}
+            >
+              {loginMutation.isPending ? "Memproses..." : "Masuk"}
+            </Button>
           </form>
-        </DialogContent>
-      </Dialog>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Belum punya akun?{" "}
+              <Link href="/register" className="text-teal-600 hover:underline">
+                Daftar di sini
+              </Link>
+            </p>
+          </div>
+
+          <div className="mt-4 text-center">
+            <Link href="/" className="text-sm text-gray-500 hover:underline">
+              ← Kembali ke Beranda
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Face Verification Modal */}
+      <FaceVerificationModal
+        isOpen={showFaceVerification}
+        onClose={() => {
+          setShowFaceVerification(false);
+          // If user closes modal, complete login without face verification
+          if (currentUser) {
+            completeLogin({ user: currentUser, token: 'demo-token' });
+          }
+        }}
+        onVerificationSuccess={handleFaceVerificationSuccess}
+        userFaceData={currentUser?.faceData}
+        userName={currentUser?.name || ''}
+      />
+
+      {/* Face Registration Modal */}
+      <FaceRegistrationModal
+        isOpen={showFaceRegistration}
+        onClose={() => {
+          setShowFaceRegistration(false);
+          // Complete login without face registration
+          if (currentUser) {
+            completeLogin({ user: currentUser, token: 'demo-token' });
+          }
+        }}
+        onFaceRegistered={handleFaceRegistration}
+        userName={currentUser?.name || ''}
+      />
     </div>
   );
 }
