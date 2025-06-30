@@ -439,6 +439,53 @@ export default function ProfilePage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Fixed Save Button at Bottom - Only show when editing */}
+        {isEditing && (
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4 md:hidden">
+            <div className="flex space-x-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setIsEditing(false);
+                  setProfileData({
+                    name: currentUser.name || "",
+                    email: currentUser.email || "",
+                    phone: currentUser.phone || "",
+                    profilePhoto: currentUser.profilePhoto || "",
+                    currentPassword: "",
+                    newPassword: "",
+                    confirmPassword: ""
+                  });
+                  setPreviewUrl(currentUser.profilePhoto || "");
+                  setSelectedImage(null);
+                }}
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                className="flex-1 bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600"
+                onClick={(e) => {
+                  e.preventDefault();
+                  const form = document.querySelector('form');
+                  if (form) {
+                    const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                    form.dispatchEvent(submitEvent);
+                  }
+                }}
+              >
+                <Save className="w-4 h-4 mr-2" />
+                Simpan
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Add bottom padding when editing on mobile to prevent overlap with fixed button */}
+        {isEditing && <div className="h-20 md:hidden"></div>}
       </div>
     </div>
   );
