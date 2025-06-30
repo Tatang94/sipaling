@@ -34,25 +34,28 @@ Platform modern untuk pencarian dan pengelolaan kos-kosan di Indonesia dengan da
 
 ### Steps Deploy
 1. **Import Project ke Vercel**
-   ```bash
-   # Install Vercel CLI (opsional)
-   npm i -g vercel
-   
-   # Deploy dari dashboard Vercel atau CLI
-   vercel
+   - Buka [vercel.com](https://vercel.com) dan login
+   - Klik "New Project" dan import dari GitHub repository
+   - Vercel akan auto-detect sebagai static site
+
+2. **Konfigurasi Build (Auto-detected)**
+   ```
+   Build Command: vite build
+   Output Directory: dist/public
+   Install Command: npm install
    ```
 
-2. **Set Environment Variables di Vercel**
-   Tambahkan variable berikut di Vercel Dashboard → Settings → Environment Variables:
+3. **Set Environment Variables (Opsional untuk fitur database)**
+   Tambahkan di Vercel Dashboard → Settings → Environment Variables:
    ```
    DATABASE_URL=postgresql://username:password@host:port/database
    NODE_ENV=production
    ```
 
-3. **Deploy**
-   - Vercel akan otomatis build dan deploy
+4. **Deploy**
+   - Klik "Deploy" dan tunggu proses selesai
    - Frontend akan tersedia di domain `.vercel.app`
-   - API akan tersedia di `/api/*` endpoints
+   - Dashboard pemilik kos dapat diakses langsung
 
 ### Database Setup
 Setelah deploy, jalankan migrasi database:
