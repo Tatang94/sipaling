@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { X, Star, MapPin, Heart, Bed, Armchair, Shirt, Snowflake, Wifi, Car, Utensils, Shield, Tv } from "lucide-react";
 import { type Kos } from "@shared/schema";
 import { formatPrice, formatRating } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface KosDetailModalProps {
   kos: Kos | null;
@@ -38,12 +40,53 @@ const facilityIcons: { [key: string]: any } = {
 
 export default function KosDetailModal({ kos, isOpen, onClose, onBook }: KosDetailModalProps) {
   const [isFavorited, setIsFavorited] = useState(false);
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
 
   if (!kos) return null;
 
   const handleBook = () => {
-    onBook(kos);
+    // Check if user is logged in
+    const user = localStorage.getItem("user");
+    if (!user) {
+      toast({
+        title: "Login Diperlukan",
+        description: "Silakan login terlebih dahulu untuk melakukan booking",
+        variant: "destructive",
+      });
+      onClose();
+      // Redirect to login page
+      setTimeout(() => {
+        setLocation("/login");
+      }, 1500);
+      return;
+    }
+
+    // Create booking data
+    const bookingData = {
+      kosId: kos.id,
+      kosName: kos.name,
+      ownerPhone: kos.ownerPhone,
+      pricePerMonth: kos.pricePerMonth,
+      bookingDate: new Date().toISOString().split('T')[0],
+    };
+
+    // Save to localStorage for now (in real app, would save to database)
+    const existingBookings = JSON.parse(localStorage.getItem("userBookings") || "[]");
+    existingBookings.push(bookingData);
+    localStorage.setItem("userBookings", JSON.stringify(existingBookings));
+
+    toast({
+      title: "Booking Berhasil!",
+      description: `Booking untuk ${kos.name} telah dikonfirmasi. Hubungi pemilik di ${kos.ownerPhone}`,
+    });
+
     onClose();
+    
+    // Redirect to dashboard after successful booking
+    setTimeout(() => {
+      setLocation("/dashboard");
+    }, 2000);
   };
 
   const getFacilityIcon = (facility: string) => {

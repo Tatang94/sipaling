@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import KosCard from "./kos-card";
@@ -10,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function FeaturedKos() {
   const [selectedKos, setSelectedKos] = useState<Kos | null>(null);
   const [filterType, setFilterType] = useState("semua");
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
 
   const { data: kosList, isLoading } = useQuery<Kos[]>({
@@ -37,6 +39,10 @@ export default function FeaturedKos() {
         description: "Silakan login terlebih dahulu untuk melakukan booking",
         variant: "destructive",
       });
+      // Redirect to login page
+      setTimeout(() => {
+        setLocation("/login");
+      }, 1500);
       return;
     }
 
@@ -58,6 +64,11 @@ export default function FeaturedKos() {
       title: "Booking Berhasil!",
       description: `Booking untuk ${kos.name} telah dikonfirmasi. Hubungi pemilik di ${kos.ownerPhone}`,
     });
+
+    // Redirect to dashboard after successful booking
+    setTimeout(() => {
+      setLocation("/dashboard");
+    }, 2000);
   };
 
   const handleViewDetails = (kos: Kos) => {

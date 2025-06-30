@@ -14,7 +14,7 @@ import { type Kos } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
 export default function SearchPage() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [selectedKos, setSelectedKos] = useState<Kos | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
@@ -59,6 +59,10 @@ export default function SearchPage() {
         description: "Silakan login terlebih dahulu untuk melakukan booking",
         variant: "destructive",
       });
+      // Redirect to login page
+      setTimeout(() => {
+        setLocation("/login");
+      }, 1500);
       return;
     }
 
@@ -80,6 +84,11 @@ export default function SearchPage() {
       title: "Booking Berhasil!",
       description: `Booking untuk ${kos.name} telah dikonfirmasi. Hubungi pemilik di ${kos.ownerPhone}`,
     });
+
+    // Redirect to dashboard after successful booking
+    setTimeout(() => {
+      setLocation("/dashboard");
+    }, 2000);
   };
 
   const handleViewDetails = (kos: Kos) => {
