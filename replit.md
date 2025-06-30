@@ -158,6 +158,7 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - June 30, 2025: Added comprehensive kos data for Medan, Padang, Palembang, Makassar, Manado, Banjarmasin, Balikpapan, Denpasar, and Mataram
 - June 30, 2025: Updated popular cities component to display 24 cities from Sabang to Merauke with authentic regional data
 - June 30, 2025: Cleaned database from all demo/mock data for production-ready deployment
+- June 30, 2025: Removed static city list to focus on GPS-based location search functionality
 - June 30, 2025: Implemented comprehensive payment system with WhatsApp notifications
 - June 30, 2025: Added payment processing, proof upload, and status tracking features
 - June 30, 2025: Created dedicated payment page with multiple payment methods support
