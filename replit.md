@@ -164,6 +164,8 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - June 30, 2025: Created complete website structure: daftar-kos, tentang, faq, kontak, privasi, syarat, dukungan pages
 - June 30, 2025: Added comprehensive contact system with WhatsApp integration (+6289663596711)
 - June 30, 2025: Implemented GPS-based kos registration system with mandatory location coordinates
+- June 30, 2025: Enhanced bantuan page with interactive FAQ categories: Cara Pencarian, Informasi Kos, Pembayaran, dan Keamanan
+- June 30, 2025: Added comprehensive help content with detailed Q&A for each category and search functionality
 - June 30, 2025: Implemented comprehensive payment system with WhatsApp notifications
 - June 30, 2025: Added payment processing, proof upload, and status tracking features
 - June 30, 2025: Created dedicated payment page with multiple payment methods support
