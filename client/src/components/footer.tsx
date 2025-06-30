@@ -4,13 +4,14 @@ import { Link } from "wouter";
 export default function Footer() {
   const quickLinks = [
     { href: "/", label: "Beranda" },
-    { href: "/search", label: "Cari Kos" },
-    { href: "#", label: "Daftarkan Kos" },
-    { href: "#", label: "Bantuan" },
-    { href: "#", label: "Tentang Kami" },
+    { href: "/cari-lokasi", label: "Cari Kos" },
+    { href: "/daftar-kos", label: "Daftarkan Kos" },
+    { href: "/bantuan", label: "Bantuan" },
+    { href: "/tentang", label: "Tentang Kami" },
   ];
 
   const supportLinks = [
+    { href: "/dukungan", label: "Dukungan" },
     { href: "/faq", label: "FAQ" },
     { href: "/kontak", label: "Hubungi Kami" },
     { href: "/privasi", label: "Kebijakan Privasi" },
@@ -90,7 +91,9 @@ export default function Footer() {
               ))}
               <li className="flex items-center text-gray-300">
                 <Phone className="w-4 h-4 mr-2" />
-                <span>+62 21 1234 5678</span>
+                <a href="tel:+6289663596711" className="hover:text-white transition-colors">
+                  +6289663596711
+                </a>
               </li>
             </ul>
           </div>

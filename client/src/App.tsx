@@ -12,6 +12,13 @@ import DashboardPage from "@/pages/dashboard";
 import ProfilePage from "@/pages/profile";
 import BantuanPage from "@/pages/bantuan";
 import PaymentPage from "@/pages/payment";
+import DaftarKosPage from "@/pages/daftar-kos";
+import TentangPage from "@/pages/tentang";
+import FAQPage from "@/pages/faq";
+import KontakPage from "@/pages/kontak";
+import PrivasiPage from "@/pages/privasi";
+import SyaratPage from "@/pages/syarat";
+import DukunganPage from "@/pages/dukungan";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -67,6 +74,13 @@ function Router() {
       <Route path="/onboarding" component={OnboardingPage} />
       <Route path="/splash" component={SplashScreen} />
       <Route path="/bantuan" component={BantuanPage} />
+      <Route path="/daftar-kos" component={DaftarKosPage} />
+      <Route path="/tentang" component={TentangPage} />
+      <Route path="/faq" component={FAQPage} />
+      <Route path="/kontak" component={KontakPage} />
+      <Route path="/privasi" component={PrivasiPage} />
+      <Route path="/syarat" component={SyaratPage} />
+      <Route path="/dukungan" component={DukunganPage} />
       <Route component={NotFound} />
     </Switch>
   );
