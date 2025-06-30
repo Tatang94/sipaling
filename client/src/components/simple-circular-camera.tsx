@@ -32,51 +32,65 @@ export function SimpleCircularCamera({
     try {
       console.log('Meminta akses kamera...');
       
-      // Coba dengan constraints yang lebih sederhana dulu
+      // Check if mediaDevices is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Browser tidak mendukung akses kamera');
+      }
+      
+      console.log('Requesting camera access...');
+      
+      // Request camera access with simple constraints
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: true
+        video: {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: 'user'
+        }
       });
       
-      console.log('Kamera berhasil diakses', stream);
+      console.log('Kamera berhasil diakses', stream.getVideoTracks().length, 'tracks');
       
-      if (videoRef.current && stream) {
-        console.log('Setting video source...');
-        videoRef.current.srcObject = stream;
-        streamRef.current = stream;
-        
-        // Set capturing state immediately
-        console.log('Setting isCapturing to true...');
-        setIsCapturing(true);
-        setCaptureStep('capturing');
-        
-        // Wait for video to be ready
-        videoRef.current.onloadedmetadata = () => {
-          console.log('Video metadata loaded, attempting to play');
-          if (videoRef.current) {
-            videoRef.current.play()
-              .then(() => {
-                console.log('Video is now playing successfully');
-              })
-              .catch(err => {
-                console.error('Error playing video:', err);
-                onError("Tidak dapat memulai video kamera.");
-              });
-          }
-        };
-        
-        // Also try to play immediately
-        try {
-          await videoRef.current.play();
-          console.log('Video playing immediately');
-        } catch (playError) {
-          console.log('Immediate play failed, waiting for metadata:', playError);
-        }
-        
-        console.log('Kamera setup complete, isCapturing should be true');
-      } else {
-        console.error('Video ref or stream is null');
-        onError("Tidak dapat mengatur video element");
+      const video = videoRef.current;
+      if (!video) {
+        throw new Error('Video element not found');
       }
+      
+      if (!stream) {
+        throw new Error('Stream is null');
+      }
+      
+      console.log('Setting video source...');
+      video.srcObject = stream;
+      streamRef.current = stream;
+      
+      // Set capturing state immediately
+      console.log('Setting isCapturing to true...');
+      setIsCapturing(true);
+      setCaptureStep('capturing');
+      
+      // Set up video event handlers
+      video.onloadedmetadata = () => {
+        console.log('Video metadata loaded, size:', video.videoWidth, 'x', video.videoHeight);
+        video.play()
+          .then(() => {
+            console.log('Video is now playing successfully');
+          })
+          .catch(err => {
+            console.error('Error playing video:', err);
+            onError("Tidak dapat memulai video kamera.");
+          });
+      };
+      
+      video.oncanplay = () => {
+        console.log('Video can play');
+      };
+      
+      video.onplay = () => {
+        console.log('Video started playing');
+      };
+      
+      console.log('Kamera setup complete, isCapturing should be true');
+      
     } catch (error: any) {
       console.error('Error kamera:', error);
       let errorMessage = "Tidak dapat mengakses kamera. ";
@@ -225,6 +239,9 @@ export function SimpleCircularCamera({
         )}
       </div>
 
+      {/* Hidden canvas for photo capture */}
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
+
       {/* Status Text */}
       <p className={`text-sm font-medium text-center max-w-xs ${statusColor}`}>
         {status}
@@ -234,7 +251,15 @@ export function SimpleCircularCamera({
       <div className="flex gap-3">
         {captureStep === 'ready' && (
           <Button 
-            onClick={startCamera} 
+            onClick={async () => {
+              console.log('Button clicked, calling startCamera');
+              try {
+                await startCamera();
+              } catch (error) {
+                console.error('Error in button click handler:', error);
+                onError('Gagal memulai kamera: ' + String(error));
+              }
+            }} 
             disabled={isProcessing}
             className="flex items-center gap-2"
           >
@@ -242,18 +267,19 @@ export function SimpleCircularCamera({
             {mode === 'register' ? 'Mulai Registrasi' : 'Mulai Login'}
           </Button>
         )}
-        
+
         {captureStep === 'capturing' && (
           <>
             <Button 
-              onClick={capturePhoto} 
+              onClick={capturePhoto}
+              disabled={isProcessing}
               className="flex items-center gap-2"
             >
-              <CheckCircle className="h-4 w-4" />
+              <Camera className="h-4 w-4" />
               Ambil Foto
             </Button>
             <Button 
-              onClick={stopCamera} 
+              onClick={stopCamera}
               variant="outline"
               className="flex items-center gap-2"
             >
@@ -262,10 +288,10 @@ export function SimpleCircularCamera({
             </Button>
           </>
         )}
-        
-        {(captureStep === 'failed') && (
+
+        {(captureStep === 'success' || captureStep === 'failed') && (
           <Button 
-            onClick={resetCapture} 
+            onClick={resetCapture}
             variant="outline"
             className="flex items-center gap-2"
           >
@@ -274,9 +300,6 @@ export function SimpleCircularCamera({
           </Button>
         )}
       </div>
-
-      {/* Hidden Canvas for Processing */}
-      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 }
