@@ -197,6 +197,11 @@ This is a modern full-stack web application for a kos (boarding house) rental pl
 - June 30, 2025: Added realistic pricing (Rp 500,000 - 950,000) and authentic locations
 - June 30, 2025: Included major Tasikmalaya districts: Cihideung, Indihiang, Tawang, Tamansari
 - June 30, 2025: All kos data now features real street addresses and GPS coordinates for Tasikmalaya
+- June 30, 2025: Updated seed data with authentic Mamikos platform listings from Tasikmalaya
+- June 30, 2025: Replaced all mock data with real kos listings including actual photos from Mamikos
+- June 30, 2025: Added authentic pricing data (Rp 401,000 - 1,600,000) based on real market rates
+- June 30, 2025: Implemented GPS auto-detection and removed manual GPS buttons throughout application
+- June 30, 2025: Database now contains 13 verified kos listings from major Tasikmalaya areas: Tawang, Cihideung, Mangkubumi
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
