@@ -84,30 +84,30 @@ export default function KosDetailModal({ kos, isOpen, onClose, onBook }: KosDeta
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl w-[95vw] max-h-[95vh] p-0 overflow-hidden sm:w-full" aria-describedby="kos-description">
-        <DialogHeader className="relative px-4 md:px-6 py-4 border-b border-gray-200">
-          <DialogTitle className="text-xl md:text-2xl font-bold text-gray-900 pr-10">
+      <DialogContent className="max-w-md w-[90vw] max-h-[85vh] p-0 overflow-hidden sm:max-w-2xl sm:w-full" aria-describedby="kos-description">
+        <DialogHeader className="relative px-3 py-3 border-b border-gray-200">
+          <DialogTitle className="text-lg font-bold text-gray-900 pr-8">
             {kos.name}
           </DialogTitle>
-          <div className="flex items-center space-x-3 mt-2">
-            <div className="flex items-center text-sm text-gray-600">
-              <Star className="w-4 h-4 text-yellow-400 mr-1 fill-current" />
-              <span className="mr-2">{formatRating(kos.rating)}</span>
-              <span>({kos.reviewCount} ulasan)</span>
+          <div className="flex items-center space-x-2 mt-1">
+            <div className="flex items-center text-xs text-gray-600">
+              <Star className="w-3 h-3 text-yellow-400 mr-1 fill-current" />
+              <span className="mr-1">{formatRating(kos.rating)}</span>
+              <span>({kos.reviewCount})</span>
             </div>
-            <Badge className={kos.type === 'putra' ? 'bg-blue-500' : kos.type === 'putri' ? 'bg-pink-500' : 'bg-purple-500'}>
+            <Badge className={`text-xs ${kos.type === 'putra' ? 'bg-blue-500' : kos.type === 'putri' ? 'bg-pink-500' : 'bg-purple-500'}`}>
               {kos.type.charAt(0).toUpperCase() + kos.type.slice(1)}
             </Badge>
           </div>
           <DialogClose asChild>
-            <Button variant="ghost" size="icon" className="absolute right-2 top-2 md:right-4 md:top-4">
-              <X className="w-5 h-5" />
+            <Button variant="ghost" size="icon" className="absolute right-1 top-1 w-8 h-8">
+              <X className="w-4 h-4" />
             </Button>
           </DialogClose>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(95vh-180px)] overflow-y-auto">
-          <div className="p-3 md:p-6 space-y-4 md:space-y-6">
+        <ScrollArea className="max-h-[calc(85vh-120px)] overflow-y-auto">
+          <div className="p-3 space-y-4">
             {/* Description */}
             <div id="kos-description">
               <p className="text-gray-600 leading-relaxed">{kos.description}</p>
@@ -181,25 +181,24 @@ export default function KosDetailModal({ kos, isOpen, onClose, onBook }: KosDeta
         </ScrollArea>
 
         {/* Pricing & Booking */}
-        <div className="border-t border-gray-200 px-3 py-3 md:px-6 md:py-4 bg-white flex-shrink-0">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-xl md:text-2xl font-bold text-primary">
+        <div className="border-t border-gray-200 px-3 py-2 bg-white flex-shrink-0">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-lg font-bold text-primary">
               {formatPrice(kos.pricePerMonth)}
-              <span className="text-sm md:text-base text-gray-500 font-normal">/bulan</span>
+              <span className="text-xs text-gray-500 font-normal">/bulan</span>
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsFavorited(!isFavorited)}
-              className="px-3 py-1.5"
+              className="px-2 py-1 h-7"
             >
-              <Heart className={`w-4 h-4 mr-1 ${isFavorited ? 'fill-red-500 text-red-500' : ''}`} />
-              <span className="hidden sm:inline">Simpan</span>
+              <Heart className={`w-3 h-3 ${isFavorited ? 'fill-red-500 text-red-500' : ''}`} />
             </Button>
           </div>
           
           <Button 
-            className="w-full bg-primary hover:bg-primary/90 text-white py-2.5 md:py-3 rounded-lg font-medium transition-colors text-sm md:text-base"
+            className="w-full bg-primary hover:bg-primary/90 text-white py-2 rounded-lg font-medium transition-colors text-sm"
             onClick={handleBook}
             disabled={!kos.isAvailable || kos.availableRooms === 0}
           >
