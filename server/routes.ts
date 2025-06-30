@@ -251,6 +251,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get bookings for specific kos
+  app.get("/api/bookings/kos/:kosId", async (req, res) => {
+    try {
+      const kosId = parseInt(req.params.kosId);
+      if (isNaN(kosId)) {
+        return res.status(400).json({ message: "Invalid kos ID" });
+      }
+      
+      const bookings = await storage.getBookingsByKos(kosId);
+      res.json(bookings);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch kos bookings" });
+    }
+  });
+
   // Update booking status
   app.patch("/api/bookings/:id/status", async (req, res) => {
     try {

@@ -113,6 +113,7 @@ export const insertBookingSchema = createInsertSchema(bookings).omit({
   status: z.string().default("pending"),
   notes: z.string().nullable().optional(),
   userId: z.number().optional(),
+  checkInDate: z.string().transform((val) => new Date(val)),
 });
 
 // Relations
