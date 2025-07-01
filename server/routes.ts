@@ -361,10 +361,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Face registration endpoint
   app.post("/api/auth/register-face", async (req, res) => {
     try {
-      const { name, email, role, faceData } = req.body;
+      const { userData, faceData } = req.body;
       
-      if (!name || !email || !role || !faceData) {
-        return res.status(400).json({ message: "Semua field diperlukan" });
+      console.log('📥 Face registration request received:', {
+        hasUserData: !!userData,
+        hasFaceData: !!faceData,
+        userDataKeys: userData ? Object.keys(userData) : [],
+        faceDataLength: faceData ? faceData.length : 0
+      });
+      
+      if (!userData || !faceData) {
+        return res.status(400).json({ message: "User data dan face data diperlukan" });
+      }
+
+      const { name, email, role } = userData;
+      
+      if (!name || !email || !role) {
+        return res.status(400).json({ message: "Name, email, dan role diperlukan" });
       }
 
       // Check if user already exists
@@ -374,7 +387,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create user with face data
-      const userData = {
+      const newUserData = {
         name,
         email,
         role,
@@ -383,7 +396,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         faceRegistered: true
       };
       
-      const user = await storage.createUser(userData);
+      console.log(`📝 Creating user: ${name} (${email}) with face data`);
+      
+      const user = await storage.createUser(newUserData);
       const { password, ...userWithoutPassword } = user;
       
       console.log(`✅ Face registration successful for user: ${user.name} (${user.email})`);
@@ -391,6 +406,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('❌ Face registration error:', error);
       res.status(500).json({ message: "Gagal registrasi wajah" });
+    }
+  });
+
+  // Update face data for existing user
+  app.post("/api/auth/update-face", async (req, res) => {
+    try {
+      const { email, faceData } = req.body;
+      
+      if (!email || !faceData) {
+        return res.status(400).json({ message: "Email dan face data diperlukan" });
+      }
+
+      console.log(`📝 Updating face data for email: ${email}`);
+      
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: "User tidak ditemukan" });
+      }
+
+      const updatedUser = await storage.updateUserFaceData(user.id, faceData);
+      if (!updatedUser) {
+        return res.status(500).json({ message: "Gagal update face data" });
+      }
+
+      console.log(`✅ Face data updated for user: ${user.name} (${user.email})`);
+      const { password, ...userWithoutPassword } = updatedUser;
+      res.json({ user: userWithoutPassword });
+    } catch (error) {
+      console.error('❌ Update face data error:', error);
+      res.status(500).json({ message: "Gagal update face data" });
     }
   });
 
