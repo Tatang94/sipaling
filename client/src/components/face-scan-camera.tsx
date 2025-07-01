@@ -123,9 +123,12 @@ export function FaceScanCamera({
     
     if (!ctx) return;
 
-    // Set canvas size to match video
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
+    // Set canvas size to match video display size
+    const rect = video.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
 
     const detectFaces = async () => {
       if (!video || video.paused || video.ended) return;
@@ -144,28 +147,43 @@ export function FaceScanCamera({
           console.log(`Found ${detections.length} face(s)`);
           setFaceDetections(detections);
           
+          // Calculate scaling factors
+          const scaleX = canvas.width / video.videoWidth;
+          const scaleY = canvas.height / video.videoHeight;
+          
           // Draw face detection overlay
           detections.forEach((detection) => {
             const box = detection.detection.box;
             const landmarks = detection.landmarks;
             
-            // Draw face bounding box
-            ctx.strokeStyle = '#00ff00';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(box.x, box.y, box.width, box.height);
+            // Scale coordinates to match canvas size
+            const scaledBox = {
+              x: box.x * scaleX,
+              y: box.y * scaleY,
+              width: box.width * scaleX,
+              height: box.height * scaleY
+            };
+            
+            // Draw face bounding box with bright green
+            ctx.strokeStyle = '#00ff88';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(scaledBox.x, scaledBox.y, scaledBox.width, scaledBox.height);
             
             // Draw face landmarks (facial features)
             if (landmarks) {
-              ctx.fillStyle = '#00ff00';
-              ctx.strokeStyle = '#00ff00';
-              ctx.lineWidth = 1;
+              ctx.fillStyle = '#00ff88';
+              ctx.strokeStyle = '#00ff88';
+              ctx.lineWidth = 2;
               
-              // Draw facial landmarks as connected lines
-              const points = landmarks.positions;
+              // Scale landmark points
+              const points = landmarks.positions.map(point => ({
+                x: point.x * scaleX,
+                y: point.y * scaleY
+              }));
               
-              // Draw face outline
+              // Draw face outline (jawline)
               ctx.beginPath();
-              const faceOutline = points.slice(0, 17); // Jawline
+              const faceOutline = points.slice(0, 17);
               ctx.moveTo(faceOutline[0].x, faceOutline[0].y);
               for (let i = 1; i < faceOutline.length; i++) {
                 ctx.lineTo(faceOutline[i].x, faceOutline[i].y);
@@ -190,7 +208,7 @@ export function FaceScanCamera({
               }
               ctx.stroke();
               
-              // Draw nose
+              // Draw nose bridge and nose
               const nose = points.slice(27, 36);
               ctx.beginPath();
               ctx.moveTo(nose[0].x, nose[0].y);
@@ -199,10 +217,8 @@ export function FaceScanCamera({
               }
               ctx.stroke();
               
-              // Draw eyes
+              // Draw left eye
               const leftEye = points.slice(36, 42);
-              const rightEye = points.slice(42, 48);
-              
               ctx.beginPath();
               ctx.moveTo(leftEye[0].x, leftEye[0].y);
               for (let i = 1; i < leftEye.length; i++) {
@@ -211,6 +227,8 @@ export function FaceScanCamera({
               ctx.closePath();
               ctx.stroke();
               
+              // Draw right eye
+              const rightEye = points.slice(42, 48);
               ctx.beginPath();
               ctx.moveTo(rightEye[0].x, rightEye[0].y);
               for (let i = 1; i < rightEye.length; i++) {
@@ -219,15 +237,27 @@ export function FaceScanCamera({
               ctx.closePath();
               ctx.stroke();
               
-              // Draw mouth
-              const mouth = points.slice(48, 68);
+              // Draw outer mouth
+              const outerMouth = points.slice(48, 60);
               ctx.beginPath();
-              ctx.moveTo(mouth[0].x, mouth[0].y);
-              for (let i = 1; i < mouth.length; i++) {
-                ctx.lineTo(mouth[i].x, mouth[i].y);
+              ctx.moveTo(outerMouth[0].x, outerMouth[0].y);
+              for (let i = 1; i < outerMouth.length; i++) {
+                ctx.lineTo(outerMouth[i].x, outerMouth[i].y);
               }
               ctx.closePath();
               ctx.stroke();
+              
+              // Draw inner mouth
+              const innerMouth = points.slice(60, 68);
+              if (innerMouth.length > 0) {
+                ctx.beginPath();
+                ctx.moveTo(innerMouth[0].x, innerMouth[0].y);
+                for (let i = 1; i < innerMouth.length; i++) {
+                  ctx.lineTo(innerMouth[i].x, innerMouth[i].y);
+                }
+                ctx.closePath();
+                ctx.stroke();
+              }
             }
           });
         } else {

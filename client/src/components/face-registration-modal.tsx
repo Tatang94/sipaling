@@ -172,6 +172,17 @@ export function FaceRegistrationModal({
                 className="w-full"
               />
               
+              {/* Information about detection */}
+              <div className="text-center p-3 bg-green-50 rounded-lg">
+                <p className="text-green-800 text-sm font-medium">
+                  💡 Petunjuk Registrasi
+                </p>
+                <p className="text-green-600 text-xs mt-1">
+                  Garis hijau akan muncul saat wajah Anda terdeteksi dengan AI. 
+                  Posisikan wajah di berbagai sudut untuk hasil terbaik.
+                </p>
+              </div>
+              
               {/* Progress indicator */}
               <div className="flex justify-center space-x-2">
                 {Array.from({ length: REQUIRED_PHOTOS }).map((_, index) => (

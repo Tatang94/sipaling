@@ -201,6 +201,17 @@ export function FaceVerificationModal({
             className="w-full"
           />
           
+          {/* Information about detection */}
+          <div className="text-center p-3 bg-green-50 rounded-lg">
+            <p className="text-green-800 text-sm font-medium">
+              💡 Petunjuk Verifikasi
+            </p>
+            <p className="text-green-600 text-xs mt-1">
+              Garis hijau akan muncul saat wajah Anda terdeteksi dengan AI. 
+              Pastikan wajah terlihat jelas dan pencahayaan cukup.
+            </p>
+          </div>
+          
           {isVerifying && (
             <div className="text-center">
               <p className="text-sm text-blue-600">
