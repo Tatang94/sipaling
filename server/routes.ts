@@ -43,6 +43,26 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Debug endpoint untuk cek user data
+  app.get("/api/debug/users", async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      const sanitizedUsers = users.map(user => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        faceRegistered: user.faceRegistered,
+        hasFaceData: !!user.faceData,
+        faceDataLength: user.faceData ? user.faceData.length : 0
+      }));
+      res.json(sanitizedUsers);
+    } catch (error: any) {
+      console.error('Error fetching users:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Get all kos
   app.get("/api/kos", async (req, res) => {
     try {
