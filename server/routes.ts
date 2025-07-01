@@ -358,6 +358,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Face registration endpoint
+  app.post("/api/auth/register-face", async (req, res) => {
+    try {
+      const { name, email, role, faceData } = req.body;
+      
+      if (!name || !email || !role || !faceData) {
+        return res.status(400).json({ message: "Semua field diperlukan" });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "Email sudah terdaftar" });
+      }
+      
+      // Create user with face data
+      const userData = {
+        name,
+        email,
+        role,
+        password: '', // Face-only authentication
+        faceData,
+        faceRegistered: true
+      };
+      
+      const user = await storage.createUser(userData);
+      const { password, ...userWithoutPassword } = user;
+      
+      console.log(`✅ Face registration successful for user: ${user.name} (${user.email})`);
+      res.status(201).json({ user: userWithoutPassword });
+    } catch (error) {
+      console.error('❌ Face registration error:', error);
+      res.status(500).json({ message: "Gagal registrasi wajah" });
+    }
+  });
+
+  // Face login endpoint  
+  app.post("/api/auth/face-login", async (req, res) => {
+    try {
+      const { faceData } = req.body;
+      
+      if (!faceData) {
+        return res.status(400).json({ message: "Data wajah diperlukan" });
+      }
+
+      console.log(`🔍 Face login attempt received`);
+      
+      // Get all users with face data
+      const allUsers = await storage.getAllUsers();
+      const usersWithFaces = allUsers.filter(user => user.faceRegistered && user.faceData);
+      
+      console.log(`📊 Found ${usersWithFaces.length} users with face data`);
+      
+      // Try to verify face against each registered user
+      for (const user of usersWithFaces) {
+        console.log(`🔍 Checking face against user: ${user.name} (ID: ${user.id})`);
+        
+        const isMatch = await storage.verifyUserFace(user.id, faceData);
+        
+        if (isMatch) {
+          console.log(`✅ Face login successful for user: ${user.name}`);
+          const { password, faceData: _, ...userWithoutSensitiveData } = user;
+          return res.json({ 
+            user: userWithoutSensitiveData,
+            message: "Login berhasil"
+          });
+        }
+      }
+      
+      console.log(`❌ Face not recognized - no matches found`);
+      res.status(401).json({ message: "Wajah tidak dikenali" });
+      
+    } catch (error) {
+      console.error('❌ Face login error:', error);
+      res.status(500).json({ message: "Gagal login wajah" });
+    }
+  });
+
   // Dashboard routes - Get user's kos (for pemilik)
   app.get("/api/dashboard/kos/:ownerId", async (req, res) => {
     try {
