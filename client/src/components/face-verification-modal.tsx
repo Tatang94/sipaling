@@ -17,6 +17,15 @@ interface SimpleFaceData {
   timestamp: string;
   faceDetected?: boolean;
   faceDescriptor?: number[];
+  livenessScore?: number;
+  qualityScore?: number;
+  headPose?: {
+    yaw: number;
+    pitch: number;
+    roll: number;
+  };
+  blinkDetected?: boolean;
+  antiSpoofingPassed?: boolean;
 }
 
 export function FaceVerificationModal({ 

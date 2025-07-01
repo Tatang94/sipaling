@@ -17,6 +17,15 @@ interface SimpleFaceData {
   timestamp: string;
   faceDetected?: boolean;
   faceDescriptor?: number[];
+  livenessScore?: number;
+  qualityScore?: number;
+  headPose?: {
+    yaw: number;
+    pitch: number;
+    roll: number;
+  };
+  blinkDetected?: boolean;
+  antiSpoofingPassed?: boolean;
 }
 
 export function FaceRegistrationModal({ 
@@ -45,8 +54,13 @@ export function FaceRegistrationModal({
       setCurrentStep(newFaceData.length + 1);
       
       const message = faceData.faceDetected 
-        ? `Wajah berhasil dideteksi! Ambil ${REQUIRED_PHOTOS - newFaceData.length} foto lagi`
+        ? `✅ Wajah terdeteksi (${faceData.qualityScore?.toFixed(0) || 0}% kualitas)! Ambil ${REQUIRED_PHOTOS - newFaceData.length} foto lagi`
         : `Foto ${newFaceData.length} berhasil. Ambil ${REQUIRED_PHOTOS - newFaceData.length} foto lagi`;
+      
+      console.log('Liveness Score:', faceData.livenessScore);
+      console.log('Quality Score:', faceData.qualityScore);
+      console.log('Blink Detected:', faceData.blinkDetected);
+      console.log('Anti-Spoofing Passed:', faceData.antiSpoofingPassed);
         
       toast({
         title: `Foto ${newFaceData.length} Berhasil`,
