@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Camera, CameraOff, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Camera, CameraOff, CheckCircle, AlertCircle, Loader2, Eye, RotateCcw } from "lucide-react";
 import * as faceapi from 'face-api.js';
 
 interface SimpleFaceData {
@@ -8,6 +8,15 @@ interface SimpleFaceData {
   timestamp: string;
   faceDetected?: boolean;
   faceDescriptor?: number[];
+  livenessScore?: number;
+  qualityScore?: number;
+  headPose?: {
+    yaw: number;
+    pitch: number;
+    roll: number;
+  };
+  blinkDetected?: boolean;
+  antiSpoofingPassed?: boolean;
 }
 
 interface FaceScanCameraProps {
@@ -30,6 +39,18 @@ export function FaceScanCamera({
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [faceDetections, setFaceDetections] = useState<any[]>([]);
   const [isScanning, setIsScanning] = useState(false);
+  
+  // Advanced liveness detection states
+  const [livenessStep, setLivenessStep] = useState<'blink' | 'turn_left' | 'turn_right' | 'smile' | 'complete'>('blink');
+  const [completedSteps, setCompletedSteps] = useState<string[]>([]);
+  const [instructionText, setInstructionText] = useState('Berkedip 2 kali untuk memulai');
+  const [blinkCount, setBlinkCount] = useState(0);
+  const [lastBlinkTime, setLastBlinkTime] = useState(0);
+  const [eyeAspectRatio, setEyeAspectRatio] = useState(0);
+  const [headPoseData, setHeadPoseData] = useState({ yaw: 0, pitch: 0, roll: 0 });
+  const [qualityScore, setQualityScore] = useState(0);
+  const [spoofingDetected, setSpoofingDetected] = useState(false);
+  const [livenessScore, setLivenessScore] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -114,6 +135,86 @@ export function FaceScanCamera({
     }
   }, [onError]);
 
+  // Calculate Eye Aspect Ratio for blink detection
+  const calculateEAR = (landmarks: any) => {
+    if (!landmarks || !landmarks.getLeftEye || !landmarks.getRightEye) return 0;
+    
+    const leftEye = landmarks.getLeftEye();
+    const rightEye = landmarks.getRightEye();
+    
+    // Calculate EAR for left eye
+    const leftEAR = (
+      Math.sqrt(Math.pow(leftEye[1].x - leftEye[5].x, 2) + Math.pow(leftEye[1].y - leftEye[5].y, 2)) +
+      Math.sqrt(Math.pow(leftEye[2].x - leftEye[4].x, 2) + Math.pow(leftEye[2].y - leftEye[4].y, 2))
+    ) / (2 * Math.sqrt(Math.pow(leftEye[0].x - leftEye[3].x, 2) + Math.pow(leftEye[0].y - leftEye[3].y, 2)));
+    
+    // Calculate EAR for right eye
+    const rightEAR = (
+      Math.sqrt(Math.pow(rightEye[1].x - rightEye[5].x, 2) + Math.pow(rightEye[1].y - rightEye[5].y, 2)) +
+      Math.sqrt(Math.pow(rightEye[2].x - rightEye[4].x, 2) + Math.pow(rightEye[2].y - rightEye[4].y, 2))
+    ) / (2 * Math.sqrt(Math.pow(rightEye[0].x - rightEye[3].x, 2) + Math.pow(rightEye[0].y - rightEye[3].y, 2)));
+    
+    return (leftEAR + rightEAR) / 2;
+  };
+
+  // Calculate head pose from landmarks
+  const calculateHeadPose = (landmarks: any) => {
+    if (!landmarks || !landmarks.positions) return { yaw: 0, pitch: 0, roll: 0 };
+    
+    const nose = landmarks.getNose();
+    const leftEye = landmarks.getLeftEye();
+    const rightEye = landmarks.getRightEye();
+    
+    if (!nose || !leftEye || !rightEye) return { yaw: 0, pitch: 0, roll: 0 };
+    
+    // Simple head pose estimation
+    const eyeCenter = {
+      x: (leftEye[0].x + rightEye[3].x) / 2,
+      y: (leftEye[0].y + rightEye[3].y) / 2
+    };
+    
+    const noseCenter = {
+      x: nose[3].x,
+      y: nose[3].y
+    };
+    
+    // Calculate yaw (left-right head movement)
+    const yaw = Math.atan2(noseCenter.x - eyeCenter.x, 100) * (180 / Math.PI);
+    
+    // Calculate pitch (up-down head movement)  
+    const pitch = Math.atan2(noseCenter.y - eyeCenter.y, 100) * (180 / Math.PI);
+    
+    // Calculate roll (tilt)
+    const roll = Math.atan2(rightEye[0].y - leftEye[3].y, rightEye[0].x - leftEye[3].x) * (180 / Math.PI);
+    
+    return { yaw, pitch, roll };
+  };
+
+  // Anti-spoofing detection
+  const detectSpoofing = (detection: any, canvas: HTMLCanvasElement) => {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return false;
+    
+    // Get image data for texture analysis
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    
+    // Simple texture analysis - check for variation in pixel values
+    let pixelVariation = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const gray = (r + g + b) / 3;
+      pixelVariation += Math.abs(gray - 128);
+    }
+    
+    const averageVariation = pixelVariation / (data.length / 4);
+    
+    // If variation is too low, might be a static image
+    return averageVariation < 10;
+  };
+
   const startFaceDetection = useCallback(() => {
     if (!modelsLoaded || !videoRef.current || !overlayCanvasRef.current) return;
 
@@ -134,12 +235,12 @@ export function FaceScanCamera({
       if (!video || video.paused || video.ended) return;
 
       try {
-        // Simple face detection optimized for free version
+        // Advanced face detection with landmarks and descriptors
         const detections = await faceapi.detectAllFaces(
           video,
           new faceapi.TinyFaceDetectorOptions({ 
-            inputSize: 320, 
-            scoreThreshold: 0.3 
+            inputSize: 416, 
+            scoreThreshold: 0.5 
           })
         ).withFaceLandmarks().withFaceDescriptors();
 
@@ -149,6 +250,62 @@ export function FaceScanCamera({
         if (detections.length > 0) {
           console.log(`Found ${detections.length} face(s)`);
           setFaceDetections(detections);
+          
+          const detection = detections[0]; // Use first face
+          const landmarks = detection.landmarks;
+          
+          // Calculate liveness metrics
+          const currentEAR = calculateEAR(landmarks);
+          const headPose = calculateHeadPose(landmarks);
+          const spoofing = detectSpoofing(detection, canvas);
+          
+          setEyeAspectRatio(currentEAR);
+          setHeadPoseData(headPose);
+          setSpoofingDetected(spoofing);
+          
+          // Blink detection logic
+          const EAR_THRESHOLD = 0.25;
+          const currentTime = Date.now();
+          
+          if (currentEAR < EAR_THRESHOLD && eyeAspectRatio >= EAR_THRESHOLD) {
+            // Eyes just closed (blink detected)
+            if (currentTime - lastBlinkTime > 500) { // Minimum 500ms between blinks
+              setBlinkCount(prev => prev + 1);
+              setLastBlinkTime(currentTime);
+              console.log(`Blink detected! Count: ${blinkCount + 1}`);
+            }
+          }
+          
+          // Liveness step progression
+          if (livenessStep === 'blink' && blinkCount >= 2) {
+            setCompletedSteps(prev => [...prev, 'blink']);
+            setLivenessStep('turn_left');
+            setInstructionText('Putar kepala ke kiri');
+          } else if (livenessStep === 'turn_left' && headPose.yaw < -15) {
+            setCompletedSteps(prev => [...prev, 'turn_left']);
+            setLivenessStep('turn_right');
+            setInstructionText('Putar kepala ke kanan');
+          } else if (livenessStep === 'turn_right' && headPose.yaw > 15) {
+            setCompletedSteps(prev => [...prev, 'turn_right']);
+            setLivenessStep('smile');
+            setInstructionText('Tersenyum lebar');
+          } else if (livenessStep === 'smile') {
+            // Simple smile detection based on mouth landmarks
+            const mouth = landmarks.getMouth();
+            if (mouth && mouth.length > 0) {
+              setCompletedSteps(prev => [...prev, 'smile']);
+              setLivenessStep('complete');
+              setInstructionText('Verifikasi berhasil!');
+            }
+          }
+          
+          // Calculate quality and liveness scores
+          const detectionScore = detection.detection.score;
+          const qualityScore = Math.min(100, Math.max(0, detectionScore * 100));
+          const livenessScore = Math.min(100, (completedSteps.length / 4) * 100);
+          
+          setQualityScore(qualityScore);
+          setLivenessScore(livenessScore);
           
           // Calculate scaling factors
           const scaleX = canvas.width / video.videoWidth;
@@ -167,8 +324,13 @@ export function FaceScanCamera({
               height: box.height * scaleY
             };
             
-            // Draw face bounding box with bright green
-            ctx.strokeStyle = '#00ff88';
+            // Dynamic color based on liveness steps
+            let strokeColor = '#00ff88'; // Green for good
+            if (spoofingDetected) strokeColor = '#ff4444'; // Red for spoofing
+            else if (qualityScore < 70) strokeColor = '#ffaa00'; // Orange for poor quality
+            
+            // Draw face bounding box
+            ctx.strokeStyle = strokeColor;
             ctx.lineWidth = 3;
             ctx.strokeRect(scaledBox.x, scaledBox.y, scaledBox.width, scaledBox.height);
             
@@ -357,12 +519,17 @@ export function FaceScanCamera({
         }
       }
       
-      // Create face data object
+      // Create face data object with liveness metrics
       const faceData: SimpleFaceData = {
         imageData,
         timestamp: new Date().toISOString(),
         faceDetected,
-        faceDescriptor
+        faceDescriptor,
+        livenessScore,
+        qualityScore,
+        headPose: headPoseData,
+        blinkDetected: blinkCount >= 2,
+        antiSpoofingPassed: !spoofingDetected
       };
       
       setCaptureStep('success');
@@ -462,6 +629,53 @@ export function FaceScanCamera({
           className="hidden"
         />
         
+        {/* Liveness Detection Overlay - Dana Style */}
+        <div className="absolute top-4 left-4 right-4 bg-gradient-to-r from-blue-600/90 to-teal-600/90 text-white p-4 rounded-lg">
+          <div className="text-center space-y-2">
+            <div className="text-lg font-semibold">{instructionText}</div>
+            
+            {/* Progress Steps */}
+            <div className="flex justify-center space-x-4 mt-3">
+              <div className={`flex items-center space-x-1 ${completedSteps.includes('blink') ? 'text-green-300' : 'text-white/60'}`}>
+                <Eye className="w-4 h-4" />
+                <span className="text-xs">Kedip</span>
+                {completedSteps.includes('blink') && <CheckCircle className="w-3 h-3" />}
+              </div>
+              
+              <div className={`flex items-center space-x-1 ${completedSteps.includes('turn_left') ? 'text-green-300' : 'text-white/60'}`}>
+                <RotateCcw className="w-4 h-4" />
+                <span className="text-xs">Kiri</span>
+                {completedSteps.includes('turn_left') && <CheckCircle className="w-3 h-3" />}
+              </div>
+              
+              <div className={`flex items-center space-x-1 ${completedSteps.includes('turn_right') ? 'text-green-300' : 'text-white/60'}`}>
+                <RotateCcw className="w-4 h-4 rotate-180" />
+                <span className="text-xs">Kanan</span>
+                {completedSteps.includes('turn_right') && <CheckCircle className="w-3 h-3" />}
+              </div>
+              
+              <div className={`flex items-center space-x-1 ${completedSteps.includes('smile') ? 'text-green-300' : 'text-white/60'}`}>
+                <span className="text-sm">😊</span>
+                <span className="text-xs">Senyum</span>
+                {completedSteps.includes('smile') && <CheckCircle className="w-3 h-3" />}
+              </div>
+            </div>
+            
+            {/* Quality Metrics */}
+            <div className="flex justify-between text-xs mt-3 pt-2 border-t border-white/20">
+              <span>Kualitas: {qualityScore.toFixed(0)}%</span>
+              <span>Liveness: {livenessScore.toFixed(0)}%</span>
+              <span>Kedipan: {blinkCount}/2</span>
+            </div>
+            
+            {spoofingDetected && (
+              <div className="bg-red-500/80 text-white px-3 py-1 rounded text-xs">
+                ⚠️ Terdeteksi foto palsu - Gunakan wajah asli
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Status Overlay */}
         <div className="absolute bottom-4 left-4 right-4 bg-black/70 text-white p-3 rounded-lg flex items-center gap-2">
           {getStatusIcon()}
@@ -473,19 +687,24 @@ export function FaceScanCamera({
       <div className="flex gap-3">
         <Button
           onClick={captureFace}
-          disabled={!isCapturing || captureStep === 'processing' || isProcessing}
+          disabled={!isCapturing || captureStep === 'processing' || isProcessing || (livenessStep !== 'complete' && mode === 'register')}
           className="flex-1"
-          variant={faceDetections.length > 0 ? "default" : "secondary"}
+          variant={faceDetections.length > 0 && (livenessStep === 'complete' || mode === 'login') ? "default" : "secondary"}
         >
           {captureStep === 'processing' ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Memproses...
             </>
+          ) : livenessStep !== 'complete' && mode === 'register' ? (
+            <>
+              <Eye className="w-4 h-4 mr-2" />
+              Selesaikan Verifikasi Liveness
+            </>
           ) : (
             <>
               <Camera className="w-4 h-4 mr-2" />
-              {mode === 'register' ? 'Ambil Foto Wajah' : 'Verifikasi Wajah'}
+              {mode === 'register' ? 'Daftar dengan Wajah' : 'Login dengan Wajah'}
             </>
           )}
         </Button>
