@@ -28,6 +28,7 @@ export function FaceRegistrationModal({
   const [capturedFaceData, setCapturedFaceData] = useState<SimpleFaceData[]>([]);
   const [currentStep, setCurrentStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [registrationStatus, setRegistrationStatus] = useState<'idle' | 'processing' | 'success'>('idle');
   const { toast } = useToast();
 
   const REQUIRED_PHOTOS = 3; // Ambil 3 foto untuk akurasi yang lebih baik
@@ -72,16 +73,21 @@ export function FaceRegistrationModal({
           ...(bestFaceData.faceDescriptor && { faceDescriptor: bestFaceData.faceDescriptor })
         };
         
+        setRegistrationStatus('success');
+        
         toast({
-          title: "Registrasi Berhasil",
+          title: "✅ Registrasi Wajah Berhasil!",
           description: bestFaceData.faceDetected 
             ? "Wajah berhasil diregistrasi dengan AI Face Detection!"
             : "Wajah berhasil diregistrasi!",
           variant: "default",
         });
         
-        onFaceRegistered(JSON.stringify(completeData));
-        onClose();
+        // Delay sebelum close untuk user melihat feedback
+        setTimeout(() => {
+          onFaceRegistered(JSON.stringify(completeData));
+          onClose();
+        }, 1500);
         
         // Reset state
         setCapturedFaceData([]);

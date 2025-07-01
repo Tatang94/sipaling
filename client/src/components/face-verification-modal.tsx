@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FaceScanCamera } from "./face-scan-camera";
 import { useToast } from "@/hooks/use-toast";
+import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 
 interface FaceVerificationModalProps {
   isOpen: boolean;
@@ -26,10 +27,12 @@ export function FaceVerificationModal({
   userName 
 }: FaceVerificationModalProps) {
   const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<'idle' | 'processing' | 'success' | 'failed'>('idle');
   const { toast } = useToast();
 
   const handleCameraCapture = async (faceData: SimpleFaceData) => {
     setIsVerifying(true);
+    setVerificationStatus('processing');
     
     try {
       console.log('Verifying face for user:', userName);
@@ -78,18 +81,36 @@ export function FaceVerificationModal({
       }
       
       if (verificationResult) {
+        setVerificationStatus('success');
+        
+        // Show success feedback
         toast({
-          title: "Verifikasi Berhasil",
+          title: "✅ Verifikasi Berhasil!",
           description: faceData.faceDetected 
-            ? `AI Face Detection berhasil! Selamat datang, ${userName}!`
-            : `Selamat datang, ${userName}!`,
+            ? `Wajah berhasil diverifikasi dengan AI! Selamat datang, ${userName}!`
+            : `Verifikasi berhasil! Selamat datang, ${userName}!`,
           variant: "default",
         });
         
-        onVerificationSuccess();
-        onClose();
+        // Small delay for user to see success message, then proceed
+        setTimeout(() => {
+          onVerificationSuccess();
+          onClose();
+        }, 2000);
       } else {
-        throw new Error('Face verification failed - face not recognized');
+        setVerificationStatus('failed');
+        
+        // Show specific failure feedback
+        toast({
+          title: "❌ Verifikasi Gagal",
+          description: "Wajah tidak dikenali atau tidak cocok. Silakan posisikan wajah dengan jelas dan coba lagi.",
+          variant: "destructive",
+        });
+        
+        // Reset status after delay for retry
+        setTimeout(() => {
+          setVerificationStatus('idle');
+        }, 3000);
       }
       
     } catch (error) {
@@ -101,6 +122,43 @@ export function FaceVerificationModal({
       });
     } finally {
       setIsVerifying(false);
+    }
+  };
+
+  const renderStatusIndicator = () => {
+    switch (verificationStatus) {
+      case 'processing':
+        return (
+          <div className="flex items-center justify-center p-4 bg-blue-50 rounded-lg mb-4">
+            <Loader2 className="w-6 h-6 animate-spin text-blue-600 mr-3" />
+            <div>
+              <p className="text-blue-800 font-medium">Memverifikasi Wajah...</p>
+              <p className="text-blue-600 text-sm">Harap tunggu sebentar</p>
+            </div>
+          </div>
+        );
+      case 'success':
+        return (
+          <div className="flex items-center justify-center p-4 bg-green-50 rounded-lg mb-4">
+            <CheckCircle className="w-6 h-6 text-green-600 mr-3" />
+            <div>
+              <p className="text-green-800 font-medium">✅ Verifikasi Berhasil!</p>
+              <p className="text-green-600 text-sm">Mengarahkan ke dashboard...</p>
+            </div>
+          </div>
+        );
+      case 'failed':
+        return (
+          <div className="flex items-center justify-center p-4 bg-red-50 rounded-lg mb-4">
+            <XCircle className="w-6 h-6 text-red-600 mr-3" />
+            <div>
+              <p className="text-red-800 font-medium">❌ Verifikasi Gagal</p>
+              <p className="text-red-600 text-sm">Silakan posisikan wajah dengan jelas dan coba lagi</p>
+            </div>
+          </div>
+        );
+      default:
+        return null;
     }
   };
 
@@ -131,6 +189,9 @@ export function FaceVerificationModal({
               Silakan verifikasi wajah Anda untuk masuk
             </p>
           </div>
+          
+          {/* Status Indicator */}
+          {renderStatusIndicator()}
           
           <FaceScanCamera
             mode="login"
