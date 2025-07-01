@@ -361,13 +361,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Face registration endpoint
   app.post("/api/auth/register-face", async (req, res) => {
     try {
+      console.log('📥 Raw request body:', JSON.stringify(req.body, null, 2));
+      
       const { userData, faceData } = req.body;
       
       console.log('📥 Face registration request received:', {
         hasUserData: !!userData,
         hasFaceData: !!faceData,
         userDataKeys: userData ? Object.keys(userData) : [],
-        faceDataLength: faceData ? faceData.length : 0
+        faceDataLength: faceData ? faceData.length : 0,
+        fullBody: req.body
       });
       
       if (!userData || !faceData) {
