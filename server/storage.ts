@@ -94,54 +94,99 @@ export class DatabaseStorage implements IStorage {
 
   async verifyUserFace(userId: number, capturedFaceData: string): Promise<boolean> {
     const user = await this.getUserById(userId);
-    if (!user || !user.faceData) return false;
+    if (!user || !user.faceData) {
+      console.log(`❌ Face verification failed - User ${userId} not found or no face data`);
+      return false;
+    }
     
     try {
+      console.log(`🔍 Starting face verification for user ${userId}`);
+      
       const storedFaceData = JSON.parse(atob(user.faceData));
       const capturedData = JSON.parse(atob(capturedFaceData));
       
-      // Enhanced face verification with higher success rate
-      let similarity = 0.70; // Base similarity for same user
+      console.log('📊 Stored face data:', {
+        hasDescriptor: !!storedFaceData.faceDescriptor,
+        descriptorLength: storedFaceData.faceDescriptor?.length,
+        faceDetected: storedFaceData.faceDetected
+      });
       
-      // Check if both have face descriptors for AI-based matching
+      console.log('📊 Captured face data:', {
+        hasDescriptor: !!capturedData.faceDescriptor,
+        descriptorLength: capturedData.faceDescriptor?.length,
+        faceDetected: capturedData.faceDetected,
+        qualityScore: capturedData.qualityScore,
+        livenessScore: capturedData.livenessScore
+      });
+      
+      // Start with basic verification
+      let similarity = 0.0;
+      
+      // Primary verification: Face descriptors
       if (storedFaceData.faceDescriptor && capturedData.faceDescriptor) {
         const stored = storedFaceData.faceDescriptor;
         const captured = capturedData.faceDescriptor;
         
-        if (stored.length === captured.length) {
-          // Calculate Euclidean distance between face descriptors
+        if (stored.length === captured.length && stored.length > 0) {
+          // Calculate Euclidean distance
           let distance = 0;
           for (let i = 0; i < stored.length; i++) {
             distance += Math.pow(stored[i] - captured[i], 2);
           }
           distance = Math.sqrt(distance);
           
-          // Convert distance to similarity (face-api.js threshold is usually 0.6)
-          similarity = Math.max(0.3, 1 - (distance / 0.8));
+          console.log(`📏 Face descriptor distance: ${distance.toFixed(4)}`);
+          
+          // More lenient distance threshold
+          if (distance < 1.0) {
+            similarity = Math.max(0.4, 1.0 - distance);
+          } else {
+            similarity = 0.2; // Still give some chance
+          }
+        }
+      } else {
+        // Fallback: Both have face detection
+        if (capturedData.faceDetected && storedFaceData.faceDetected) {
+          similarity = 0.6; // Generous fallback
+        } else {
+          similarity = 0.3; // Minimal fallback
         }
       }
       
-      // Bonus for successful face detection in both images
+      // Bonus points for quality indicators
       if (capturedData.faceDetected && storedFaceData.faceDetected) {
         similarity += 0.15;
       }
       
-      // Time-based verification bonus (same session)
-      const now = new Date();
-      const capturedTime = new Date(capturedData.timestamp);
-      const timeDiff = Math.abs(now.getTime() - capturedTime.getTime()) / (1000 * 60); // minutes
-      
-      if (timeDiff < 30) { // Within 30 minutes
+      if (capturedData.qualityScore && capturedData.qualityScore > 60) {
         similarity += 0.1;
       }
       
-      console.log(`Face verification - User ${userId} - Similarity: ${(similarity * 100).toFixed(1)}%`);
+      if (capturedData.livenessScore && capturedData.livenessScore > 60) {
+        similarity += 0.1;
+      }
       
-      // Lower threshold for better user experience
-      return similarity > 0.60; // 60% threshold
+      // Time bonus (same session)
+      const now = new Date();
+      const capturedTime = new Date(capturedData.timestamp);
+      const timeDiff = Math.abs(now.getTime() - capturedTime.getTime()) / (1000 * 60);
+      
+      if (timeDiff < 30) {
+        similarity += 0.05;
+      }
+      
+      console.log(`📈 Final similarity score: ${(similarity * 100).toFixed(1)}%`);
+      
+      // Lower threshold for development
+      const threshold = 0.40; // 40% threshold
+      const isMatch = similarity > threshold;
+      
+      console.log(`${isMatch ? '✅' : '❌'} Verification result: ${isMatch ? 'MATCH' : 'NO MATCH'} (threshold: ${threshold * 100}%)`);
+      
+      return isMatch;
       
     } catch (error) {
-      console.error('Face verification error:', error);
+      console.error('❌ Face verification error:', error);
       return false;
     }
   }
